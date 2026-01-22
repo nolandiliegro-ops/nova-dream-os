@@ -12,12 +12,16 @@ import { useTransactionStats, useTransactions } from "@/hooks/useTransactions";
 import { useMode } from "@/contexts/ModeContext";
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
+import { useUserGoals } from "@/hooks/useUserGoals";
 
 export function RevenueWidget() {
   const { mode } = useMode();
   const stats = useTransactionStats(mode);
   const { data: transactions } = useTransactions(mode);
+  const { data: userGoals } = useUserGoals(2026);
 
+  // Use dynamic goal from user settings
+  const objectif2026 = userGoals?.annual_revenue_goal ?? 1000000;
   // Build chart data from real transactions
   const chartData = useMemo(() => {
     if (!transactions || transactions.length === 0) {
@@ -53,7 +57,6 @@ export function RevenueWidget() {
       });
   }, [transactions]);
 
-  const objectif2026 = 1000000;
   const progressPercentage = (stats.totalRevenue / objectif2026) * 100;
 
   return (
