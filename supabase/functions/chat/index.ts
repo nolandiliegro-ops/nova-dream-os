@@ -30,12 +30,26 @@ serve(async (req) => {
       progressPercentage: 0,
       projectsInProgress: 0,
       urgentTasks: 0,
+      annualGoal: 1000000, // Default, will be overwritten by user_goals
       recentTransactions: [] as { amount: number; segment: string; date: string }[],
       activeProjects: [] as { name: string; progress: number; deadline: string | null }[],
       todayTasks: [] as { title: string; priority: string; status: string }[],
     };
 
     if (userId) {
+      // Fetch user's custom annual goal from user_goals
+      const currentYear = new Date().getFullYear();
+      const { data: userGoal } = await supabase
+        .from("user_goals")
+        .select("annual_revenue_goal")
+        .eq("user_id", userId)
+        .eq("year", currentYear)
+        .maybeSingle();
+
+      if (userGoal?.annual_revenue_goal) {
+        contextData.annualGoal = Number(userGoal.annual_revenue_goal);
+      }
+
       // Fetch transactions for revenue calculation
       const { data: transactions } = await supabase
         .from("transactions")
@@ -46,7 +60,7 @@ serve(async (req) => {
       if (transactions) {
         const goalTransactions = transactions.filter(t => t.counts_toward_goal && t.type === "income");
         contextData.totalRevenue = goalTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-        contextData.progressPercentage = (contextData.totalRevenue / 1000000) * 100;
+        contextData.progressPercentage = (contextData.totalRevenue / contextData.annualGoal) * 100;
         contextData.recentTransactions = transactions
           .filter(t => t.type === "income")
           .slice(0, 5)
@@ -94,10 +108,11 @@ serve(async (req) => {
     }
 
     // Build system prompt with real context
-    const systemPrompt = `Tu es Nova, l'assistant IA personnel de Nono. Tu l'aides à atteindre son objectif de 1 000 000 euros de CA en 2026.
+    const systemPrompt = `Tu es Nova, l'assistant IA personnel de Nono. Tu l'aides à atteindre son objectif de ${contextData.annualGoal.toLocaleString("fr-FR")} euros de CA en ${new Date().getFullYear()}.
 
 CONTEXTE ACTUEL EN TEMPS RÉEL :
-- Revenus totaux : ${contextData.totalRevenue.toLocaleString("fr-FR")}€ (${contextData.progressPercentage.toFixed(1)}% de l'objectif 1M€)
+- Objectif annuel personnalisé : ${contextData.annualGoal.toLocaleString("fr-FR")}€
+- Revenus totaux : ${contextData.totalRevenue.toLocaleString("fr-FR")}€ (${contextData.progressPercentage.toFixed(1)}% de l'objectif)
 - Projets en cours : ${contextData.projectsInProgress}
 - Tâches urgentes/prioritaires : ${contextData.urgentTasks}
 
