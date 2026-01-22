@@ -13,6 +13,7 @@ interface UploadOptions {
   category?: string;
   description?: string;
   onProgress?: (progress: number) => void;
+  autoAnalyze?: boolean; // NEW: trigger auto-analysis after upload
 }
 
 interface DocumentStats {
@@ -93,6 +94,31 @@ export const useDocumentStats = (mode: string) => {
   });
 };
 
+// Trigger background analysis for a document
+const triggerBackgroundAnalysis = async (documentId: string, userId: string) => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-document`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ documentId, userId }),
+      }
+    );
+
+    if (response.ok) {
+      console.log("Background analysis completed for document:", documentId);
+    } else {
+      console.warn("Background analysis failed:", await response.text());
+    }
+  } catch (error) {
+    console.warn("Background analysis error:", error);
+  }
+};
+
 // Upload document with progress tracking
 export const useUploadDocument = () => {
   const { user } = useAuth();
@@ -106,6 +132,7 @@ export const useUploadDocument = () => {
       category = "other",
       description,
       onProgress,
+      autoAnalyze = true, // Default to auto-analyze
     }: UploadOptions): Promise<Document> => {
       if (!user?.id) throw new Error("User not authenticated");
 
@@ -163,6 +190,13 @@ export const useUploadDocument = () => {
         }
 
         onProgress?.(100);
+
+        // Trigger background analysis if enabled (non-blocking)
+        if (autoAnalyze && (file.type.startsWith("image/") || file.type === "application/pdf")) {
+          // Fire and forget - don't wait for completion
+          triggerBackgroundAnalysis(docData.id, user.id);
+        }
+
         return docData as Document;
       } catch (error) {
         clearInterval(progressInterval);
@@ -172,6 +206,7 @@ export const useUploadDocument = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       queryClient.invalidateQueries({ queryKey: ["document-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["latest-document"] });
       toast.success("Document uploadé avec succès !");
     },
     onError: (error) => {

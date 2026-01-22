@@ -2,12 +2,15 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, Sparkles, Zap, Brain, MessageSquare, Loader2, User } from "lucide-react";
+import { Bot, Send, Sparkles, Zap, Brain, MessageSquare, Loader2, User, FileText } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMode } from "@/contexts/ModeContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DocumentAnalysisCard } from "@/components/assistant/DocumentAnalysisCard";
+import { useAnalyzeDocument, useLatestDocument, type AnalysisResult } from "@/hooks/useDocumentAnalysis";
 
 type Message = {
   role: "user" | "assistant";
@@ -18,10 +21,15 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export default function Assistant() {
   const { user } = useAuth();
+  const { mode } = useMode();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const { data: latestDocument } = useLatestDocument(mode);
+  const analyzeDocument = useAnalyzeDocument();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -163,11 +171,23 @@ export default function Assistant() {
     sendMessage(input);
   };
 
+  const handleAnalyzeDocument = async () => {
+    if (!latestDocument) return;
+    
+    try {
+      const result = await analyzeDocument.mutateAsync(latestDocument.id);
+      setAnalysisResult(result);
+      toast.success("Document analysé avec succès !");
+    } catch (error) {
+      // Error is handled in the hook
+    }
+  };
+
   const quickActions = [
     "Où en suis-je de mon objectif 1M€ ?",
     "Quelles sont mes priorités aujourd'hui ?",
     "Résumé de mes projets actifs",
-    "Conseils pour booster mes revenus",
+    "Analyse mon dernier document",
   ];
 
   return (
@@ -292,6 +312,14 @@ export default function Assistant() {
 
           {/* Capabilities Sidebar */}
           <div className="space-y-4">
+            {/* Document Analysis Card */}
+            <DocumentAnalysisCard
+              analysis={analysisResult}
+              isLoading={analyzeDocument.isPending}
+              onAnalyze={handleAnalyzeDocument}
+              latestDocumentName={latestDocument?.name}
+            />
+
             <GlassCard className="p-5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
@@ -307,6 +335,7 @@ export default function Assistant() {
                 {[
                   { icon: Brain, label: "Analyse financière", desc: "Progression objectif 1M€" },
                   { icon: Zap, label: "Priorisation", desc: "Tâches urgentes du jour" },
+                  { icon: FileText, label: "Lecture documents", desc: "OCR & extraction IA" },
                   { icon: MessageSquare, label: "Conseils business", desc: "Stratégies croissance" },
                 ].map((cap) => (
                   <div key={cap.label} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
