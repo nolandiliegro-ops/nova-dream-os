@@ -1,15 +1,31 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { useMode } from "@/contexts/ModeContext";
 import { Button } from "@/components/ui/button";
-import { Plus, FolderKanban, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, FolderKanban, Clock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useProjects, useProjectStats, useCreateProject, useUpdateProject } from "@/hooks/useProjects";
+import { toast } from "sonner";
+
+const segments = [
+  { value: "ecommerce", label: "E-commerce" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "consulting", label: "Consulting" },
+  { value: "oracle", label: "Oracle" },
+  { value: "other", label: "Autre" },
+];
 
 const segmentColors: Record<string, string> = {
   ecommerce: "border-segment-ecommerce text-segment-ecommerce",
   tiktok: "border-segment-tiktok text-segment-tiktok",
   consulting: "border-segment-consulting text-segment-consulting",
   oracle: "border-segment-oracle text-segment-oracle",
+  other: "border-muted-foreground text-muted-foreground",
 };
 
 const segmentBgColors: Record<string, string> = {
@@ -17,24 +33,75 @@ const segmentBgColors: Record<string, string> = {
   tiktok: "bg-segment-tiktok/20",
   consulting: "bg-segment-consulting/20",
   oracle: "bg-segment-oracle/20",
+  other: "bg-muted",
 };
-
-// Placeholder projects
-const projects = [
-  { id: 1, name: "Boutique Shopify V2", segment: "ecommerce", status: "in_progress", progress: 65, deadline: "2026-02-15" },
-  { id: 2, name: "Campagne TikTok Q1", segment: "tiktok", status: "in_progress", progress: 40, deadline: "2026-01-31" },
-  { id: 3, name: "Audit Client Alpha", segment: "consulting", status: "completed", progress: 100, deadline: "2026-01-20" },
-  { id: 4, name: "Formation Oracle Cloud", segment: "oracle", status: "planned", progress: 0, deadline: "2026-03-01" },
-];
 
 const statusConfig = {
   planned: { label: "Planifié", icon: Clock, color: "text-muted-foreground" },
   in_progress: { label: "En cours", icon: AlertCircle, color: "text-primary" },
   completed: { label: "Terminé", icon: CheckCircle2, color: "text-segment-ecommerce" },
+  on_hold: { label: "En pause", icon: Clock, color: "text-segment-oracle" },
 };
 
 export default function Projects() {
   const { mode } = useMode();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "other",
+    status: "planned" as "planned" | "in_progress" | "completed" | "on_hold",
+    deadline: "",
+    budget: "",
+  });
+
+  const { data: projects, isLoading } = useProjects(mode);
+  const stats = useProjectStats(mode);
+  const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      await createProject.mutateAsync({
+        name: formData.name,
+        description: formData.description || null,
+        segment: formData.segment,
+        status: formData.status,
+        progress: 0,
+        deadline: formData.deadline || null,
+        mode: mode,
+        budget: formData.budget ? parseFloat(formData.budget) : null,
+        revenue_generated: 0,
+      });
+      
+      toast.success("Projet créé !");
+      setIsDialogOpen(false);
+      setFormData({
+        name: "",
+        description: "",
+        segment: "ecommerce",
+        status: "planned",
+        deadline: "",
+        budget: "",
+      });
+    } catch (error) {
+      toast.error("Erreur lors de la création");
+    }
+  };
+
+  const handleProgressUpdate = async (id: string, progress: number) => {
+    try {
+      await updateProject.mutateAsync({
+        id,
+        progress,
+        status: progress === 100 ? "completed" : progress > 0 ? "in_progress" : "planned",
+      });
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -49,10 +116,108 @@ export default function Projects() {
               {mode === "work" ? "Gestion de tes projets business" : "Tes projets personnels"}
             </p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nouveau projet
-          </Button>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nouveau projet
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Créer un projet</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom du projet</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Ex: Boutique Shopify V2"
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="segment">Segment</Label>
+                    <Select
+                      value={formData.segment}
+                      onValueChange={(value: typeof formData.segment) => setFormData({ ...formData, segment: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {segments.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Statut</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value: typeof formData.status) => setFormData({ ...formData, status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="planned">Planifié</SelectItem>
+                        <SelectItem value="in_progress">En cours</SelectItem>
+                        <SelectItem value="completed">Terminé</SelectItem>
+                        <SelectItem value="on_hold">En pause</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="deadline">Deadline</Label>
+                    <Input
+                      id="deadline"
+                      type="date"
+                      value={formData.deadline}
+                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="budget">Budget (€)</Label>
+                    <Input
+                      id="budget"
+                      type="number"
+                      value={formData.budget}
+                      onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Description du projet"
+                  />
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={createProject.isPending}>
+                  {createProject.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Créer le projet"
+                  )}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Stats */}
@@ -63,7 +228,7 @@ export default function Projects() {
                 <FolderKanban className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">4</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
                 <p className="text-xs text-muted-foreground">Projets totaux</p>
               </div>
             </div>
@@ -75,7 +240,7 @@ export default function Projects() {
                 <AlertCircle className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">2</p>
+                <p className="text-2xl font-bold">{stats.inProgress}</p>
                 <p className="text-xs text-muted-foreground">En cours</p>
               </div>
             </div>
@@ -87,7 +252,7 @@ export default function Projects() {
                 <CheckCircle2 className="h-5 w-5 text-segment-ecommerce" />
               </div>
               <div>
-                <p className="text-2xl font-bold">1</p>
+                <p className="text-2xl font-bold">{stats.completed}</p>
                 <p className="text-xs text-muted-foreground">Terminés</p>
               </div>
             </div>
@@ -99,7 +264,7 @@ export default function Projects() {
                 <Clock className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">1</p>
+                <p className="text-2xl font-bold">{stats.planned}</p>
                 <p className="text-xs text-muted-foreground">Planifiés</p>
               </div>
             </div>
@@ -107,61 +272,71 @@ export default function Projects() {
         </div>
 
         {/* Projects Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => {
-            const StatusIcon = statusConfig[project.status as keyof typeof statusConfig].icon;
-            
-            return (
-              <GlassCard 
-                key={project.id} 
-                className={cn(
-                  "p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02]",
-                  segmentColors[project.segment]
-                )}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className={cn("rounded-lg p-2", segmentBgColors[project.segment])}>
-                    <FolderKanban className={cn("h-5 w-5", segmentColors[project.segment].split(" ")[1])} />
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {projects?.map((project) => {
+              const StatusIcon = statusConfig[project.status].icon;
+              
+              return (
+                <GlassCard 
+                  key={project.id} 
+                  className={cn(
+                    "p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02]",
+                    segmentColors[project.segment]
+                  )}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={cn("rounded-lg p-2", segmentBgColors[project.segment])}>
+                      <FolderKanban className={cn("h-5 w-5", segmentColors[project.segment].split(" ")[1])} />
+                    </div>
+                    <div className={cn("flex items-center gap-1 text-xs", statusConfig[project.status].color)}>
+                      <StatusIcon className="h-3 w-3" />
+                      <span>{statusConfig[project.status].label}</span>
+                    </div>
                   </div>
-                  <div className={cn("flex items-center gap-1 text-xs", statusConfig[project.status as keyof typeof statusConfig].color)}>
-                    <StatusIcon className="h-3 w-3" />
-                    <span>{statusConfig[project.status as keyof typeof statusConfig].label}</span>
-                  </div>
-                </div>
-                
-                <h3 className="font-semibold mb-1">{project.name}</h3>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Deadline: {new Date(project.deadline).toLocaleDateString('fr-FR')}
-                </p>
-                
-                {/* Progress bar */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Progression</span>
-                    <span className="font-medium">{project.progress}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div 
-                      className={cn(
-                        "h-full transition-all",
-                        project.progress === 100 ? "bg-segment-ecommerce" : "bg-primary"
-                      )}
-                      style={{ width: `${project.progress}%` }}
+                  
+                  <h3 className="font-semibold mb-1">{project.name}</h3>
+                  {project.deadline && (
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Deadline: {new Date(project.deadline).toLocaleDateString('fr-FR')}
+                    </p>
+                  )}
+                  
+                  {/* Progress bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Progression</span>
+                      <span className="font-medium">{project.progress}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={project.progress}
+                      onChange={(e) => handleProgressUpdate(project.id, parseInt(e.target.value))}
+                      className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
                     />
                   </div>
-                </div>
-              </GlassCard>
-            );
-          })}
-          
-          {/* Add new project card */}
-          <GlassCard className="p-5 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-            <div className="text-center">
-              <Plus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Ajouter un projet</p>
-            </div>
-          </GlassCard>
-        </div>
+                </GlassCard>
+              );
+            })}
+            
+            {/* Add new project card */}
+            <GlassCard 
+              className="p-5 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => setIsDialogOpen(true)}
+            >
+              <div className="text-center">
+                <Plus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Ajouter un projet</p>
+              </div>
+            </GlassCard>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

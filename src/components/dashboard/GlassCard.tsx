@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { ReactNode, HTMLAttributes } from "react";
 
-interface GlassCardProps {
+interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
   segment?: "ecommerce" | "tiktok" | "consulting" | "oracle";
@@ -13,6 +13,7 @@ export function GlassCard({
   className,
   segment,
   glowOnHover = false,
+  ...props
 }: GlassCardProps) {
   const segmentClasses = {
     ecommerce: "hover:border-segment-ecommerce/30",
@@ -36,6 +37,7 @@ export function GlassCard({
         segment && glowOnHover && glowClasses[segment],
         className
       )}
+      {...props}
     >
       {children}
     </div>

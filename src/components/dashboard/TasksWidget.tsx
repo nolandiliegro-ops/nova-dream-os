@@ -1,74 +1,112 @@
 import { GlassCard } from "./GlassCard";
-import { Circle, ChevronRight } from "lucide-react";
+import { Circle, ChevronRight, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTasks, useToggleTaskComplete } from "@/hooks/useTasks";
+import { useMode } from "@/contexts/ModeContext";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
-const tasks = [
-  {
-    id: 1,
-    title: "Lancer l'emmaillieur tasks",
-    time: "9 jours, 42 minutes",
-    completed: false,
-    segment: "ecommerce" as const,
-  },
-  {
-    id: 2,
-    title: "Report-a conduncation freerback",
-    time: "6 cutnws, 73 minutes",
-    completed: false,
-    segment: "consulting" as const,
-  },
-  {
-    id: 3,
-    title: "Add content to meeting",
-    time: "Due today",
-    completed: false,
-    segment: "tiktok" as const,
-  },
-  {
-    id: 4,
-    title: "Review new project content",
-    time: "Tomorrow",
-    completed: false,
-    segment: "oracle" as const,
-  },
-];
-
-const segmentBorderColors = {
-  ecommerce: "border-segment-ecommerce",
-  tiktok: "border-segment-tiktok",
-  consulting: "border-segment-consulting",
-  oracle: "border-segment-oracle",
+const priorityBorderColors = {
+  high: "border-destructive",
+  medium: "border-segment-oracle",
+  low: "border-segment-consulting",
 };
 
 export function TasksWidget() {
+  const { mode } = useMode();
+  const { data: tasks, isLoading } = useTasks(mode);
+  const toggleComplete = useToggleTaskComplete();
+
+  // Get only incomplete tasks, sorted by priority and due date
+  const urgentTasks = tasks
+    ?.filter((t) => t.status !== "completed")
+    .sort((a, b) => {
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      }
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      }
+      return 0;
+    })
+    .slice(0, 4);
+
+  const handleToggle = async (id: string) => {
+    try {
+      await toggleComplete.mutateAsync({ id, completed: true });
+      toast.success("Tâche complétée !");
+    } catch (error) {
+      toast.error("Erreur");
+    }
+  };
+
+  const formatDueDate = (date: string | null) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
+    if (d.toDateString() === tomorrow.toDateString()) return "Demain";
+    
+    const diffDays = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return `${Math.abs(diffDays)} jours de retard`;
+    if (diffDays <= 7) return `Dans ${diffDays} jours`;
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+
   return (
     <GlassCard className="col-span-2">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">Urgent Tasks</h3>
-        <button className="rounded-full p-1 hover:bg-secondary transition-colors">
+        <div>
+          <h3 className="font-semibold">Tâches urgentes</h3>
+          <p className="text-xs text-muted-foreground">
+            {urgentTasks?.length || 0} en attente
+          </p>
+        </div>
+        <Link to="/tasks" className="rounded-full p-1 hover:bg-secondary transition-colors">
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+        </Link>
       </div>
 
-      <div className="space-y-3">
-        {tasks.map((task) => (
-          <div
-            key={task.id}
-            className={cn(
-              "flex items-start gap-3 rounded-xl border-l-2 bg-secondary/30 p-3 transition-all hover:bg-secondary/50",
-              segmentBorderColors[task.segment]
-            )}
-          >
-            <button className="mt-0.5 rounded-full p-0.5 hover:bg-secondary transition-colors">
-              <Circle className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{task.title}</p>
-              <p className="text-xs text-muted-foreground">{task.time}</p>
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : urgentTasks && urgentTasks.length > 0 ? (
+        <div className="space-y-3">
+          {urgentTasks.map((task) => (
+            <div
+              key={task.id}
+              className={cn(
+                "flex items-start gap-3 rounded-xl border-l-2 bg-secondary/30 p-3 transition-all hover:bg-secondary/50",
+                priorityBorderColors[task.priority]
+              )}
+            >
+              <button 
+                onClick={() => handleToggle(task.id)}
+                className="mt-0.5 rounded-full p-0.5 hover:bg-secondary transition-colors"
+              >
+                <Circle className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{task.title}</p>
+                <p className="text-xs text-muted-foreground">{formatDueDate(task.due_date)}</p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-segment-ecommerce" />
+          <p className="text-sm text-muted-foreground">Aucune tâche urgente !</p>
+          <Link to="/tasks" className="text-xs text-primary hover:underline">
+            Ajouter une tâche
+          </Link>
+        </div>
+      )}
     </GlassCard>
   );
 }
