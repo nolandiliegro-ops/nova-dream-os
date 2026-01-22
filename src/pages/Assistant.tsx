@@ -19,10 +19,22 @@ type Message = {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
+const CHAT_STORAGE_KEY = "nova-chat-history";
+
 export default function Assistant() {
   const { user } = useAuth();
   const { mode } = useMode();
-  const [messages, setMessages] = useState<Message[]>([]);
+  
+  // Initialize messages from localStorage
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -30,6 +42,15 @@ export default function Assistant() {
   
   const { data: latestDocument } = useLatestDocument(mode);
   const analyzeDocument = useAnalyzeDocument();
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [messages]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
