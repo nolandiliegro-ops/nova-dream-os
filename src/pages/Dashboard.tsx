@@ -5,10 +5,14 @@ import { DeadlineWidget } from "@/components/dashboard/DeadlineWidget";
 import { TasksWidget } from "@/components/dashboard/TasksWidget";
 import { ToolsWidget } from "@/components/dashboard/ToolsWidget";
 import { useMode } from "@/contexts/ModeContext";
+import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { mode } = useMode();
+  
+  // Enable realtime notifications for new transactions
+  useRealtimeTransactions();
 
   return (
     <DashboardLayout>
