@@ -5,10 +5,63 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Shield, Palette, Target, LogOut } from "lucide-react";
+import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save } from "lucide-react";
+import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
+import { useUserGoals, useUpdateUserGoals } from "@/hooks/useUserGoals";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: goals, isLoading: goalsLoading } = useUserGoals(2026);
+  const updateProfile = useUpdateProfile();
+  const updateGoals = useUpdateUserGoals();
+
+  const [fullName, setFullName] = useState("");
+  const [revenueGoal, setRevenueGoal] = useState(1000000);
+  const [projectsGoal, setProjectsGoal] = useState(12);
+
+  // Sync state with fetched data
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || "");
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (goals) {
+      setRevenueGoal(Number(goals.annual_revenue_goal));
+      setProjectsGoal(goals.annual_projects_goal);
+    }
+  }, [goals]);
+
+  const handleSaveProfile = async () => {
+    try {
+      await updateProfile.mutateAsync({ full_name: fullName });
+      toast.success("Profil mis à jour !");
+    } catch (error) {
+      toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
+  const handleSaveGoals = async () => {
+    try {
+      await updateGoals.mutateAsync({
+        year: 2026,
+        goals: {
+          annual_revenue_goal: revenueGoal,
+          annual_projects_goal: projectsGoal,
+        },
+      });
+      toast.success("Objectifs 2026 mis à jour ! 🎯");
+    } catch (error) {
+      toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
+  const isLoading = profileLoading || goalsLoading;
+  const isSaving = updateProfile.isPending || updateGoals.isPending;
 
   return (
     <DashboardLayout>
@@ -42,11 +95,28 @@ export default function Settings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Nom complet</Label>
-              <Input id="name" placeholder="Ton nom" />
+              <Input 
+                id="name" 
+                placeholder="Ton nom" 
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                disabled={isLoading}
+              />
             </div>
           </div>
           
-          <Button className="mt-4">Sauvegarder</Button>
+          <Button 
+            className="mt-4 gap-2" 
+            onClick={handleSaveProfile}
+            disabled={isSaving}
+          >
+            {updateProfile.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Sauvegarder
+          </Button>
         </GlassCard>
 
         {/* Objectifs Section */}
@@ -64,13 +134,44 @@ export default function Settings() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="revenue-goal">Objectif CA annuel (€)</Label>
-              <Input id="revenue-goal" type="number" defaultValue="1000000" />
+              <Input 
+                id="revenue-goal" 
+                type="number" 
+                value={revenueGoal}
+                onChange={(e) => setRevenueGoal(Number(e.target.value))}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Objectif actuel : {revenueGoal.toLocaleString('fr-FR')}€
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="projects-goal">Objectif projets</Label>
-              <Input id="projects-goal" type="number" defaultValue="12" />
+              <Input 
+                id="projects-goal" 
+                type="number" 
+                value={projectsGoal}
+                onChange={(e) => setProjectsGoal(Number(e.target.value))}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Nombre de projets à livrer en 2026
+              </p>
             </div>
           </div>
+          
+          <Button 
+            className="mt-4 gap-2" 
+            onClick={handleSaveGoals}
+            disabled={isSaving}
+          >
+            {updateGoals.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Sauvegarder les objectifs
+          </Button>
         </GlassCard>
 
         {/* Notifications Section */}

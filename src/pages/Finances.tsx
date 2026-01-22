@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Target, ArrowUpRight, ArrowDownRight, TrendingUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTransactions, useTransactionStats, useCreateTransaction } from "@/hooks/useTransactions";
+import { useUserGoals } from "@/hooks/useUserGoals";
 import { toast } from "sonner";
 
 const segments = [
@@ -35,10 +36,11 @@ export default function Finances() {
   const { data: transactions, isLoading } = useTransactions(mode);
   const stats = useTransactionStats(mode);
   const createTransaction = useCreateTransaction();
+  const { data: userGoals } = useUserGoals(2026);
 
-  // Objectif 2026: 1 000 000€
-  const objectif2026 = 1000000;
-  const progressPercentage = stats.goalProgress;
+  // Dynamic goal from user settings
+  const objectif2026 = userGoals?.annual_revenue_goal ?? 1000000;
+  const progressPercentage = (stats.totalRevenue / objectif2026) * 100;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +203,7 @@ export default function Finances() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold">Objectif 2026</h2>
-                <p className="text-sm text-muted-foreground">1 000 000€ de CA</p>
+                <p className="text-sm text-muted-foreground">{objectif2026.toLocaleString('fr-FR')}€ de CA</p>
               </div>
             </div>
             <div className="text-right">
