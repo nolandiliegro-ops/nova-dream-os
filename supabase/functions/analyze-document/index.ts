@@ -56,20 +56,33 @@ serve(async (req) => {
       );
     }
 
-    // Generate signed URL to access the file
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    // Download the file content
+    const { data: fileData, error: downloadError } = await supabase.storage
       .from("documents")
-      .createSignedUrl(document.file_path, 300); // 5 minutes
+      .download(document.file_path);
 
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      throw new Error("Failed to generate signed URL for document");
+    if (downloadError || !fileData) {
+      throw new Error("Failed to download document: " + downloadError?.message);
     }
+
+    // Convert file to base64
+    const arrayBuffer = await fileData.arrayBuffer();
+    const base64Data = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+    );
 
     // Determine content type and prepare for Gemini
     const isImage = document.mime_type.startsWith("image/");
     const isPDF = document.mime_type === "application/pdf";
     
-    let analysisPrompt = `Tu es un assistant d'analyse documentaire expert. Analyse ce document et extrais les informations clés.
+    if (!isImage && !isPDF) {
+      return new Response(
+        JSON.stringify({ error: "Seuls les fichiers PDF et images sont supportés pour l'analyse" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const analysisPrompt = `Tu es un assistant d'analyse documentaire expert. Analyse ce document et extrais les informations clés.
 
 Le document s'appelle "${document.name}" et appartient au segment "${document.segment || 'Non classé'}".
 
@@ -93,22 +106,16 @@ Réponds UNIQUEMENT avec un JSON valide au format suivant :
   "suggestedAction": "Ajouter 500€ en dépense E-commerce"
 }`;
 
-    // Build the message content for Gemini
-    const messageContent: any[] = [{ type: "text", text: analysisPrompt }];
-
-    // For images, include the image URL directly
-    if (isImage) {
-      messageContent.push({
+    // Build the message content for Gemini with inline base64 data
+    const messageContent: any[] = [
+      { type: "text", text: analysisPrompt },
+      {
         type: "image_url",
-        image_url: { url: signedUrlData.signedUrl }
-      });
-    } else if (isPDF) {
-      // For PDFs, Gemini can process them via URL
-      messageContent.push({
-        type: "file",
-        file: { url: signedUrlData.signedUrl }
-      });
-    }
+        image_url: {
+          url: `data:${document.mime_type};base64,${base64Data}`
+        }
+      }
+    ];
 
     // Call Gemini for analysis
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
