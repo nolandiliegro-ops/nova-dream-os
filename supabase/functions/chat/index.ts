@@ -34,6 +34,7 @@ serve(async (req) => {
       recentTransactions: [] as { amount: number; segment: string; date: string }[],
       activeProjects: [] as { name: string; progress: number; deadline: string | null }[],
       todayTasks: [] as { title: string; priority: string; status: string }[],
+      recentDocuments: [] as { id: string; name: string; segment: string; uploaded_at: string; hasAnalysis: boolean }[],
     };
 
     if (userId) {
@@ -105,6 +106,25 @@ serve(async (req) => {
           status: t.status,
         }));
       }
+
+      // Fetch recent documents
+      const { data: documents } = await supabase
+        .from("documents")
+        .select("id, name, segment, created_at, description")
+        .eq("user_id", userId)
+        .eq("mode", "work")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (documents) {
+        contextData.recentDocuments = documents.map(d => ({
+          id: d.id,
+          name: d.name,
+          segment: d.segment || "Non classé",
+          uploaded_at: d.created_at,
+          hasAnalysis: !!d.description,
+        }));
+      }
     }
 
     // Build system prompt with real context
@@ -115,6 +135,7 @@ CONTEXTE ACTUEL EN TEMPS RÉEL :
 - Revenus totaux : ${contextData.totalRevenue.toLocaleString("fr-FR")}€ (${contextData.progressPercentage.toFixed(1)}% de l'objectif)
 - Projets en cours : ${contextData.projectsInProgress}
 - Tâches urgentes/prioritaires : ${contextData.urgentTasks}
+- Documents dans le coffre-fort : ${contextData.recentDocuments.length}
 
 PROJETS ACTIFS :
 ${contextData.activeProjects.length > 0 
@@ -131,12 +152,23 @@ ${contextData.recentTransactions.length > 0
   ? contextData.recentTransactions.map(t => `- ${t.amount.toLocaleString("fr-FR")}€ (${t.segment}) le ${t.date}`).join("\n")
   : "- Aucune transaction récente"}
 
+DOCUMENTS RÉCENTS :
+${contextData.recentDocuments.length > 0
+  ? contextData.recentDocuments.map(d => `- ${d.name} (${d.segment})${d.hasAnalysis ? " ✓ analysé" : ""}`).join("\n")
+  : "- Aucun document dans le coffre-fort"}
+
+CAPACITÉS SPÉCIALES :
+- Tu peux analyser les documents PDF et images uploadés dans le coffre-fort
+- Si on te demande d'analyser un document, indique que l'utilisateur peut cliquer sur "Analyse mon dernier document"
+- Tu connais le contenu des documents qui ont été analysés (résumé stocké)
+
 INSTRUCTIONS :
 - Réponds de façon concise, actionnable et motivante
 - Utilise le tutoiement et sois direct
 - Base tes réponses sur les données réelles ci-dessus
 - Si on te demande "où en suis-je", donne les chiffres précis
 - Si on te demande les priorités, liste les tâches urgentes
+- Si on te parle de documents, mentionne ceux dans le coffre-fort
 - Encourage Nono à rester focus sur son objectif 1M€`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
