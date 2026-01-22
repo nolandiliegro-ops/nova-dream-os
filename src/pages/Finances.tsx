@@ -1,17 +1,74 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { useMode } from "@/contexts/ModeContext";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, TrendingDown, Target, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Target, ArrowUpRight, ArrowDownRight, TrendingUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTransactions, useTransactionStats, useCreateTransaction } from "@/hooks/useTransactions";
+import { toast } from "sonner";
+
+const segments = [
+  { value: "ecommerce", label: "E-commerce", color: "bg-segment-ecommerce" },
+  { value: "tiktok", label: "TikTok", color: "bg-segment-tiktok" },
+  { value: "consulting", label: "Consulting", color: "bg-segment-consulting" },
+  { value: "oracle", label: "Oracle", color: "bg-segment-oracle" },
+  { value: "other", label: "Autre", color: "bg-muted" },
+];
 
 export default function Finances() {
   const { mode } = useMode();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    amount: "",
+    type: "income" as "income" | "expense",
+    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "other",
+    category: "",
+    description: "",
+    date: new Date().toISOString().split("T")[0],
+  });
+
+  const { data: transactions, isLoading } = useTransactions(mode);
+  const stats = useTransactionStats(mode);
+  const createTransaction = useCreateTransaction();
 
   // Objectif 2026: 1 000 000€
   const objectif2026 = 1000000;
-  const currentRevenue = 125000; // Placeholder - sera connecté à la BDD
-  const progressPercentage = (currentRevenue / objectif2026) * 100;
+  const progressPercentage = stats.goalProgress;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      await createTransaction.mutateAsync({
+        amount: parseFloat(formData.amount),
+        type: formData.type,
+        segment: formData.segment,
+        category: formData.category || null,
+        description: formData.description || null,
+        date: formData.date,
+        mode: mode,
+        counts_toward_goal: true,
+      });
+      
+      toast.success("Transaction ajoutée !");
+      setIsDialogOpen(false);
+      setFormData({
+        amount: "",
+        type: "income",
+        segment: "ecommerce",
+        category: "",
+        description: "",
+        date: new Date().toISOString().split("T")[0],
+      });
+    } catch (error) {
+      toast.error("Erreur lors de l'ajout");
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -26,10 +83,113 @@ export default function Finances() {
               {mode === "work" ? "Suivi de tes revenus business" : "Suivi de tes finances personnelles"}
             </p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nouvelle transaction
-          </Button>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nouvelle transaction
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Ajouter une transaction</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Montant (€)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Type</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value: "income" | "expense") => setFormData({ ...formData, type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="income">Revenu</SelectItem>
+                        <SelectItem value="expense">Dépense</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="segment">Segment</Label>
+                  <Select
+                    value={formData.segment}
+                    onValueChange={(value: typeof formData.segment) => setFormData({ ...formData, segment: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {segments.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          <div className="flex items-center gap-2">
+                            <div className={cn("h-2 w-2 rounded-full", s.color)} />
+                            {s.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Catégorie</Label>
+                    <Input
+                      id="category"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      placeholder="Ex: Vente produit"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Description optionnelle"
+                  />
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={createTransaction.isPending}>
+                  {createTransaction.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Ajouter"
+                  )}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Objectif 1M€ Card */}
@@ -45,7 +205,7 @@ export default function Finances() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold">{currentRevenue.toLocaleString('fr-FR')}€</p>
+              <p className="text-3xl font-bold">{stats.totalRevenue.toLocaleString('fr-FR')}€</p>
               <p className="text-sm text-muted-foreground">{progressPercentage.toFixed(1)}% atteint</p>
             </div>
           </div>
@@ -56,7 +216,6 @@ export default function Finances() {
               className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-segment-ecommerce transition-all duration-500"
               style={{ width: `${Math.min(progressPercentage, 100)}%` }}
             />
-            {/* Milestone markers */}
             <div className="absolute inset-y-0 left-1/4 w-px bg-background/50" />
             <div className="absolute inset-y-0 left-1/2 w-px bg-background/50" />
             <div className="absolute inset-y-0 left-3/4 w-px bg-background/50" />
@@ -77,8 +236,7 @@ export default function Finances() {
               <span className="text-sm text-muted-foreground">Revenus ce mois</span>
               <ArrowUpRight className="h-4 w-4 text-segment-ecommerce" />
             </div>
-            <p className="mt-2 text-2xl font-bold">32 450€</p>
-            <p className="text-xs text-segment-ecommerce">+12.5% vs mois dernier</p>
+            <p className="mt-2 text-2xl font-bold">{stats.monthlyRevenue.toLocaleString('fr-FR')}€</p>
           </GlassCard>
           
           <GlassCard className="p-4">
@@ -86,26 +244,23 @@ export default function Finances() {
               <span className="text-sm text-muted-foreground">Dépenses ce mois</span>
               <ArrowDownRight className="h-4 w-4 text-destructive" />
             </div>
-            <p className="mt-2 text-2xl font-bold">8 230€</p>
-            <p className="text-xs text-destructive">+5.2% vs mois dernier</p>
+            <p className="mt-2 text-2xl font-bold">{stats.monthlyExpenses.toLocaleString('fr-FR')}€</p>
           </GlassCard>
           
           <GlassCard className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Profit net</span>
+              <span className="text-sm text-muted-foreground">Profit net total</span>
               <TrendingUp className="h-4 w-4 text-segment-ecommerce" />
             </div>
-            <p className="mt-2 text-2xl font-bold">24 220€</p>
-            <p className="text-xs text-segment-ecommerce">Marge: 74.6%</p>
+            <p className="mt-2 text-2xl font-bold">{stats.netProfit.toLocaleString('fr-FR')}€</p>
           </GlassCard>
           
           <GlassCard className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Projection annuelle</span>
+              <span className="text-sm text-muted-foreground">Total revenus</span>
               <Target className="h-4 w-4 text-primary" />
             </div>
-            <p className="mt-2 text-2xl font-bold">389 400€</p>
-            <p className="text-xs text-muted-foreground">Basé sur la moyenne</p>
+            <p className="mt-2 text-2xl font-bold">{stats.totalRevenue.toLocaleString('fr-FR')}€</p>
           </GlassCard>
         </div>
 
@@ -114,35 +269,65 @@ export default function Finances() {
           <GlassCard className="p-6">
             <h3 className="mb-4 font-semibold">Revenus par segment</h3>
             <div className="space-y-4">
-              {[
-                { name: "E-commerce", amount: 45000, color: "bg-segment-ecommerce" },
-                { name: "TikTok", amount: 35000, color: "bg-segment-tiktok" },
-                { name: "Consulting", amount: 30000, color: "bg-segment-consulting" },
-                { name: "Oracle", amount: 15000, color: "bg-segment-oracle" },
-              ].map((segment) => (
-                <div key={segment.name} className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{segment.name}</span>
-                    <span className="font-medium">{segment.amount.toLocaleString('fr-FR')}€</span>
+              {segments.slice(0, 4).map((segment) => {
+                const amount = stats.revenueBySegment[segment.value] || 0;
+                const maxAmount = Math.max(...Object.values(stats.revenueBySegment), 1);
+                
+                return (
+                  <div key={segment.value} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>{segment.label}</span>
+                      <span className="font-medium">{amount.toLocaleString('fr-FR')}€</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div 
+                        className={cn("h-full transition-all", segment.color)}
+                        style={{ width: `${(amount / maxAmount) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div 
-                      className={cn("h-full transition-all", segment.color)}
-                      style={{ width: `${(segment.amount / 45000) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </GlassCard>
 
           <GlassCard className="p-6">
             <h3 className="mb-4 font-semibold">Transactions récentes</h3>
             <div className="space-y-3">
-              <p className="text-center text-muted-foreground py-8">
-                Aucune transaction pour le moment.<br />
-                <span className="text-sm">Clique sur "Nouvelle transaction" pour commencer.</span>
-              </p>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : transactions && transactions.length > 0 ? (
+                transactions.slice(0, 5).map((t) => (
+                  <div 
+                    key={t.id}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg bg-muted/30 p-3",
+                      "border-l-4",
+                      segments.find(s => s.value === t.segment)?.color.replace('bg-', 'border-')
+                    )}
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{t.description || t.category || t.segment}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(t.date).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    <p className={cn(
+                      "font-semibold",
+                      t.type === "income" ? "text-segment-ecommerce" : "text-destructive"
+                    )}>
+                      {t.type === "income" ? "+" : "-"}{Number(t.amount).toLocaleString('fr-FR')}€
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Aucune transaction pour le moment.<br />
+                  <span className="text-sm">Clique sur "Nouvelle transaction" pour commencer.</span>
+                </p>
+              )}
             </div>
           </GlassCard>
         </div>

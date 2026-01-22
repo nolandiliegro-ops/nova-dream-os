@@ -44,6 +44,188 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          budget: number | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          id: string
+          mode: string
+          name: string
+          progress: number
+          revenue_generated: number | null
+          segment: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget?: number | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          mode?: string
+          name: string
+          progress?: number
+          revenue_generated?: number | null
+          segment: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget?: number | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          mode?: string
+          name?: string
+          progress?: number
+          revenue_generated?: number | null
+          segment?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          estimated_time: number
+          id: string
+          mode: string
+          priority: string
+          project_id: string | null
+          status: string
+          time_spent: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_time?: number
+          id?: string
+          mode?: string
+          priority?: string
+          project_id?: string | null
+          status?: string
+          time_spent?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_time?: number
+          id?: string
+          mode?: string
+          priority?: string
+          project_id?: string | null
+          status?: string
+          time_spent?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          counts_toward_goal: boolean
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          mode: string
+          segment: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          counts_toward_goal?: boolean
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          mode?: string
+          segment: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          counts_toward_goal?: boolean
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          mode?: string
+          segment?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_goals: {
+        Row: {
+          annual_projects_goal: number
+          annual_revenue_goal: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          annual_projects_goal?: number
+          annual_revenue_goal?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          year?: number
+        }
+        Update: {
+          annual_projects_goal?: number
+          annual_revenue_goal?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
