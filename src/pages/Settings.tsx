@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save } from "lucide-react";
+import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save, Zap } from "lucide-react";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useUserGoals, useUpdateUserGoals } from "@/hooks/useUserGoals";
+import { useApiConfig, useUpsertApiConfig } from "@/hooks/useApiConfigs";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -15,12 +16,15 @@ export default function Settings() {
   const { user, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: goals, isLoading: goalsLoading } = useUserGoals(2026);
+  const { data: webhookConfig, isLoading: webhookLoading } = useApiConfig("n8n_webhook");
   const updateProfile = useUpdateProfile();
   const updateGoals = useUpdateUserGoals();
+  const upsertApiConfig = useUpsertApiConfig();
 
   const [fullName, setFullName] = useState("");
   const [revenueGoal, setRevenueGoal] = useState(1000000);
   const [projectsGoal, setProjectsGoal] = useState(12);
+  const [webhookUrl, setWebhookUrl] = useState("");
 
   // Sync state with fetched data
   useEffect(() => {
@@ -36,6 +40,13 @@ export default function Settings() {
     }
   }, [goals]);
 
+  // Sync webhook URL with fetched data
+  useEffect(() => {
+    if (webhookConfig?.config && typeof webhookConfig.config === "object" && !Array.isArray(webhookConfig.config)) {
+      const config = webhookConfig.config as { url?: string };
+      setWebhookUrl(config.url || "");
+    }
+  }, [webhookConfig]);
   const handleSaveProfile = async () => {
     try {
       await updateProfile.mutateAsync({ full_name: fullName });
@@ -60,8 +71,21 @@ export default function Settings() {
     }
   };
 
-  const isLoading = profileLoading || goalsLoading;
-  const isSaving = updateProfile.isPending || updateGoals.isPending;
+  const handleSaveWebhook = async () => {
+    try {
+      await upsertApiConfig.mutateAsync({
+        type: "n8n_webhook",
+        name: "Webhook n8n",
+        config: { url: webhookUrl },
+      });
+      toast.success("Webhook n8n configuré ! 🔗");
+    } catch (error) {
+      toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
+  const isLoading = profileLoading || goalsLoading || webhookLoading;
+  const isSaving = updateProfile.isPending || updateGoals.isPending || upsertApiConfig.isPending;
 
   return (
     <DashboardLayout>
@@ -171,6 +195,49 @@ export default function Settings() {
               <Save className="h-4 w-4" />
             )}
             Sauvegarder les objectifs
+          </Button>
+        </GlassCard>
+
+        {/* Automation Section */}
+        <GlassCard className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-segment-tiktok/20">
+              <Zap className="h-5 w-5 text-segment-tiktok" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Automatisation (n8n)</h3>
+              <p className="text-xs text-muted-foreground">Configure tes webhooks pour l'automatisation</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="webhook-url">URL Webhook n8n</Label>
+              <Input 
+                id="webhook-url" 
+                type="url"
+                placeholder="https://votre-instance.n8n.cloud/webhook/..."
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Colle l'URL de ton webhook n8n pour synchroniser tes ventes automatiquement
+              </p>
+            </div>
+          </div>
+          
+          <Button 
+            className="mt-4 gap-2" 
+            onClick={handleSaveWebhook}
+            disabled={isSaving || !webhookUrl.trim()}
+          >
+            {upsertApiConfig.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Sauvegarder le webhook
           </Button>
         </GlassCard>
 
