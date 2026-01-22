@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, Sparkles, Zap, Brain, MessageSquare, Loader2, User, FileText } from "lucide-react";
+import { Bot, Send, Sparkles, Zap, Brain, MessageSquare, Loader2, User, FileText, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMode } from "@/contexts/ModeContext";
@@ -215,13 +215,30 @@ export default function Assistant() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in h-[calc(100vh-8rem)]">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold md:text-3xl">
-            Assistant <span className="text-gradient">Nova</span>
-          </h1>
-          <p className="text-muted-foreground">
-            Ton copilote IA connecté à tes données pour atteindre 1M€
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold md:text-3xl">
+              Assistant <span className="text-gradient">Nova</span>
+            </h1>
+            <p className="text-muted-foreground">
+              Ton copilote IA connecté à tes données pour atteindre 1M€
+            </p>
+          </div>
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setMessages([]);
+                localStorage.removeItem(CHAT_STORAGE_KEY);
+                toast.success("Conversation effacée !");
+              }}
+              className="gap-2 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Nouvelle conversation</span>
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3 h-[calc(100%-5rem)]">
