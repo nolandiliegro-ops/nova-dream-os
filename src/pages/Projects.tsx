@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { useMode } from "@/contexts/ModeContext";
@@ -51,6 +52,8 @@ const statusConfig = {
 
 export default function Projects() {
   const { mode } = useMode();
+  const [searchParams] = useSearchParams();
+  const [segmentFilter, setSegmentFilter] = useState<string | null>(searchParams.get("segment"));
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<typeof projects extends (infer T)[] | undefined ? T | null : never>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -71,10 +74,21 @@ export default function Projects() {
     budget: "",
   });
 
+  // Sync filter with URL params
+  useEffect(() => {
+    const urlSegment = searchParams.get("segment");
+    if (urlSegment) setSegmentFilter(urlSegment);
+  }, [searchParams]);
+
   const { data: projects, isLoading } = useProjects(mode);
   const stats = useProjectStats(mode);
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
+
+  // Filter projects by segment
+  const filteredProjects = segmentFilter 
+    ? projects?.filter(p => p.segment === segmentFilter)
+    : projects;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,6 +337,27 @@ export default function Projects() {
           </GlassCard>
         </div>
 
+        {/* Segment Filter Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          <Button 
+            variant={segmentFilter === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSegmentFilter(null)}
+          >
+            Tous
+          </Button>
+          {segments.map(s => (
+            <Button
+              key={s.value}
+              variant={segmentFilter === s.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSegmentFilter(s.value)}
+            >
+              {s.label}
+            </Button>
+          ))}
+        </div>
+
         {/* Projects Grid */}
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -330,7 +365,7 @@ export default function Projects() {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {projects?.map((project) => {
+            {filteredProjects?.map((project) => {
               const StatusIcon = statusConfig[project.status].icon;
               
               return (

@@ -32,7 +32,7 @@ serve(async (req) => {
       urgentTasks: 0,
       annualGoal: 1000000, // Default, will be overwritten by user_goals
       recentTransactions: [] as { amount: number; segment: string; date: string }[],
-      activeProjects: [] as { name: string; progress: number; deadline: string | null }[],
+      activeProjects: [] as { name: string; progress: number; deadline: string | null; budget: number | null; segment: string; description: string | null }[],
       todayTasks: [] as { title: string; priority: string; status: string }[],
       recentDocuments: [] as { id: string; name: string; segment: string; uploaded_at: string; hasAnalysis: boolean }[],
     };
@@ -68,20 +68,23 @@ serve(async (req) => {
           .map(t => ({ amount: Number(t.amount), segment: t.segment, date: t.date }));
       }
 
-      // Fetch projects in progress
+      // Fetch projects in progress with budget, segment, and description
       const { data: projects } = await supabase
         .from("projects")
-        .select("name, progress, deadline, status")
+        .select("name, progress, deadline, status, budget, segment, description")
         .eq("user_id", userId)
         .eq("mode", "work")
         .in("status", ["in_progress", "planned"]);
 
       if (projects) {
-        contextData.projectsInProgress = projects.filter(p => p.status === "active").length;
-        contextData.activeProjects = projects.slice(0, 5).map(p => ({
+        contextData.projectsInProgress = projects.filter(p => p.status === "in_progress").length;
+        contextData.activeProjects = projects.slice(0, 10).map(p => ({
           name: p.name,
           progress: p.progress,
           deadline: p.deadline,
+          budget: p.budget ? Number(p.budget) : null,
+          segment: p.segment,
+          description: p.description,
         }));
       }
 
@@ -137,9 +140,15 @@ CONTEXTE ACTUEL EN TEMPS RÉEL :
 - Tâches urgentes/prioritaires : ${contextData.urgentTasks}
 - Documents dans le coffre-fort : ${contextData.recentDocuments.length}
 
-PROJETS ACTIFS :
+MES 5 PILIERS BUSINESS :
 ${contextData.activeProjects.length > 0 
-  ? contextData.activeProjects.map(p => `- ${p.name} (${p.progress}%${p.deadline ? `, deadline: ${p.deadline}` : ""})`).join("\n")
+  ? contextData.activeProjects.map(p => 
+      `• ${p.name} [${p.segment.toUpperCase()}]
+   Budget: ${p.budget ? p.budget.toLocaleString("fr-FR") + "€" : "Non défini"}
+   Deadline: ${p.deadline ? new Date(p.deadline).toLocaleDateString("fr-FR") : "Non définie"}
+   Progression: ${p.progress}%
+   ${p.description ? `Description: ${p.description}` : ""}`
+    ).join("\n\n")
   : "- Aucun projet actif pour le moment"}
 
 TÂCHES À FAIRE :
@@ -169,7 +178,8 @@ INSTRUCTIONS :
 - Si on te demande "où en suis-je", donne les chiffres précis
 - Si on te demande les priorités, liste les tâches urgentes
 - Si on te parle de documents, mentionne ceux dans le coffre-fort
-- Encourage Nono à rester focus sur son objectif 1M€`;
+- Encourage Nono à rester focus sur son objectif 1M€
+- Si on te demande un "état des lieux" ou "analyse de mes piliers", présente chaque projet avec son budget, sa deadline et sa progression de façon structurée`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
