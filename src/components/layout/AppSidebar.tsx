@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -39,7 +40,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-sidebar-border">
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 space-y-4">
         <div className="flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary glow-primary">
             <Sparkles className="h-5 w-5 text-primary-foreground" />
@@ -49,6 +50,7 @@ export function AppSidebar() {
             <span className="text-xs text-sidebar-foreground/60">Life OS</span>
           </div>
         </div>
+        <PomodoroTimer />
       </SidebarHeader>
 
       <SidebarContent>
