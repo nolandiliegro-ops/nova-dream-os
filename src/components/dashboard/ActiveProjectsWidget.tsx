@@ -62,8 +62,10 @@ export function ActiveProjectsWidget() {
     : [
         { segment: "ecommerce" as const, count: 0 },
         { segment: "tiktok" as const, count: 0 },
-        { segment: "consulting" as const, count: 0 },
         { segment: "oracle" as const, count: 0 },
+        { segment: "data" as const, count: 0 },
+        { segment: "tech" as const, count: 0 },
+        { segment: "consulting" as const, count: 0 },
       ];
 
   return (
@@ -78,8 +80,8 @@ export function ActiveProjectsWidget() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {displaySegments.slice(0, 4).map(({ segment, count }) => {
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {displaySegments.slice(0, 6).map(({ segment, count }) => {
           const Icon = segmentIcons[segment];
           
           return (

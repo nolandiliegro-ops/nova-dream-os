@@ -15,6 +15,10 @@ const sourceToSegment: Record<string, string> = {
   'stripe': 'consulting',
   'consulting': 'consulting',
   'oracle': 'oracle',
+  'data': 'data',
+  'enquetes': 'data',
+  'tech': 'tech',
+  'app': 'tech',
   'other': 'other',
 };
 
