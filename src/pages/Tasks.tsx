@@ -229,14 +229,14 @@ export default function Tasks() {
                   <div className="space-y-2">
                     <Label htmlFor="project">Projet</Label>
                     <Select
-                      value={formData.project_id}
-                      onValueChange={(value) => setFormData({ ...formData, project_id: value })}
+                      value={formData.project_id || "none"}
+                      onValueChange={(value) => setFormData({ ...formData, project_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Aucun projet" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucun projet</SelectItem>
+                        <SelectItem value="none">Aucun projet</SelectItem>
                         {projects?.map((p) => (
                           <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                         ))}
@@ -446,14 +446,14 @@ export default function Tasks() {
                 <div className="space-y-2">
                   <Label htmlFor="edit-project">Projet</Label>
                   <Select
-                    value={editFormData.project_id}
-                    onValueChange={(value) => setEditFormData({ ...editFormData, project_id: value })}
+                    value={editFormData.project_id || "none"}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, project_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Aucun projet" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun projet</SelectItem>
+                      <SelectItem value="none">Aucun projet</SelectItem>
                       {projects?.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                       ))}
