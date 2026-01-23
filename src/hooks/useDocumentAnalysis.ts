@@ -57,6 +57,20 @@ export const useAnalyzeDocument = () => {
 
       return response.json();
     },
+    onSuccess: (data) => {
+      // Show success toast with document insights
+      toast.success(`🧠 Nouvel insight détecté !`, {
+        description: `Document "${data.documentName}" analysé avec succès`,
+        duration: 6000,
+        action: {
+          label: "Voir",
+          onClick: () => {
+            // Navigate to documents page - could be enhanced
+            window.location.href = "/documents";
+          },
+        },
+      });
+    },
     onError: (error) => {
       console.error("Analysis error:", error);
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'analyse");

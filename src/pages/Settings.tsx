@@ -1,15 +1,16 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
+import { AutomationsSection } from "@/components/settings/AutomationsSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save, Zap, Copy, Check, RefreshCw } from "lucide-react";
+import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save } from "lucide-react";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useUserGoals, useUpdateUserGoals } from "@/hooks/useUserGoals";
-import { useApiConfig, useUpsertApiConfig } from "@/hooks/useApiConfigs";
-import { useState, useEffect, useMemo } from "react";
+import { useApiConfig } from "@/hooks/useApiConfigs";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 // Generate a random token
@@ -29,19 +30,11 @@ export default function Settings() {
   const { data: webhookConfig, isLoading: webhookLoading } = useApiConfig("n8n_webhook");
   const updateProfile = useUpdateProfile();
   const updateGoals = useUpdateUserGoals();
-  const upsertApiConfig = useUpsertApiConfig();
 
   const [fullName, setFullName] = useState("");
   const [revenueGoal, setRevenueGoal] = useState(1000000);
   const [projectsGoal, setProjectsGoal] = useState(12);
   const [webhookToken, setWebhookToken] = useState("");
-  const [copiedUrl, setCopiedUrl] = useState(false);
-  const [copiedToken, setCopiedToken] = useState(false);
-
-  // The full webhook URL to provide to n8n
-  const webhookReceiverUrl = useMemo(() => {
-    return `https://vdrxwdhexntbrhktddum.supabase.co/functions/v1/webhook-receiver?token=${webhookToken}`;
-  }, [webhookToken]);
 
   // Sync state with fetched data
   useEffect(() => {
@@ -64,11 +57,9 @@ export default function Settings() {
       if (config.webhook_token) {
         setWebhookToken(config.webhook_token);
       } else {
-        // Generate a new token if none exists
         setWebhookToken(generateToken());
       }
     } else if (!webhookLoading && !webhookConfig) {
-      // No config exists, generate a new token
       setWebhookToken(generateToken());
     }
   }, [webhookConfig, webhookLoading]);
@@ -97,49 +88,8 @@ export default function Settings() {
     }
   };
 
-  const handleSaveWebhook = async () => {
-    try {
-      await upsertApiConfig.mutateAsync({
-        type: "n8n_webhook",
-        name: "Webhook n8n",
-        config: { webhook_token: webhookToken },
-      });
-      toast.success("Configuration webhook sauvegardée ! 🔗");
-    } catch (error) {
-      toast.error("Erreur lors de la sauvegarde");
-    }
-  };
-
-  const handleRegenerateToken = () => {
-    const newToken = generateToken();
-    setWebhookToken(newToken);
-    toast.info("Nouveau token généré. N'oublie pas de sauvegarder !");
-  };
-
-  const handleCopyUrl = async () => {
-    try {
-      await navigator.clipboard.writeText(webhookReceiverUrl);
-      setCopiedUrl(true);
-      toast.success("URL copiée !");
-      setTimeout(() => setCopiedUrl(false), 2000);
-    } catch {
-      toast.error("Erreur lors de la copie");
-    }
-  };
-
-  const handleCopyToken = async () => {
-    try {
-      await navigator.clipboard.writeText(webhookToken);
-      setCopiedToken(true);
-      toast.success("Token copié !");
-      setTimeout(() => setCopiedToken(false), 2000);
-    } catch {
-      toast.error("Erreur lors de la copie");
-    }
-  };
-
   const isLoading = profileLoading || goalsLoading || webhookLoading;
-  const isSaving = updateProfile.isPending || updateGoals.isPending || upsertApiConfig.isPending;
+  const isSaving = updateProfile.isPending || updateGoals.isPending;
 
   return (
     <DashboardLayout>
@@ -252,109 +202,13 @@ export default function Settings() {
           </Button>
         </GlassCard>
 
-        {/* Automation Section - Enhanced */}
-        <GlassCard className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-segment-tiktok/20">
-              <Zap className="h-5 w-5 text-segment-tiktok" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Automatisation (n8n)</h3>
-              <p className="text-xs text-muted-foreground">Configure ton webhook pour recevoir les ventes automatiquement</p>
-            </div>
-          </div>
-          
-          <div className="space-y-5">
-            {/* Webhook URL - Read Only with Copy */}
-            <div className="space-y-2">
-              <Label>URL Webhook (à copier dans n8n)</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={webhookReceiverUrl}
-                  readOnly
-                  className="bg-muted/50 font-mono text-xs"
-                />
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={handleCopyUrl}
-                  className="shrink-0"
-                >
-                  {copiedUrl ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Utilise cette URL dans ton workflow n8n pour envoyer les ventes à Nova Life OS
-              </p>
-            </div>
-
-            {/* Token Secret with Copy and Regenerate */}
-            <div className="space-y-2">
-              <Label>Token Secret</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={webhookToken}
-                  readOnly
-                  className="bg-muted/50 font-mono text-xs"
-                />
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={handleCopyToken}
-                  className="shrink-0"
-                >
-                  {copiedToken ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={handleRegenerateToken}
-                  className="shrink-0"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Ce token sécurise ton webhook. Ne le partage pas !
-              </p>
-            </div>
-
-            {/* Payload Format */}
-            <div className="rounded-lg bg-muted/30 p-4 border border-border/50">
-              <p className="text-sm font-medium mb-2">Format JSON attendu :</p>
-              <pre className="text-xs font-mono text-muted-foreground overflow-x-auto">
-{`{
-  "amount": 150.00,
-  "source": "tiktok_shop", // ou "shopify", "stripe"
-  "description": "Vente produit X",
-  "date": "2026-03-15",
-  "category": "Vente directe"
-}`}
-              </pre>
-            </div>
-
-            {/* Status indicator */}
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${webhookConfig ? 'bg-primary' : 'bg-muted-foreground'}`} />
-              <span className="text-sm text-muted-foreground">
-                {webhookConfig ? 'Webhook configuré et actif' : 'En attente de configuration'}
-              </span>
-            </div>
-          </div>
-          
-          <Button 
-            className="mt-4 gap-2" 
-            onClick={handleSaveWebhook}
-            disabled={isSaving || !webhookToken}
-          >
-            {upsertApiConfig.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Sauvegarder la configuration
-          </Button>
-        </GlassCard>
+        {/* Automations Section - New Component */}
+        <AutomationsSection
+          webhookConfig={webhookConfig}
+          webhookLoading={webhookLoading}
+          webhookToken={webhookToken}
+          setWebhookToken={setWebhookToken}
+        />
 
         {/* Notifications Section */}
         <GlassCard className="p-6">
