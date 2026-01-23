@@ -12,6 +12,8 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUrgentDeadlines } from "@/hooks/useProjects";
+import { useApiStatus } from "@/hooks/useApiConfigs";
+import { useApiConfig } from "@/hooks/useApiConfigs";
 import {
   LayoutDashboard,
   Wallet,
@@ -22,6 +24,7 @@ import {
   Settings,
   LogOut,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
@@ -40,6 +43,11 @@ const navItems = [
 export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { count: urgentCount, hasUrgent } = useUrgentDeadlines(48);
+  const { data: apiStatus } = useApiStatus();
+  const { data: webhookConfig } = useApiConfig("n8n_webhook");
+
+  // Check if any API is not configured
+  const hasUnconfiguredApi = !apiStatus?.resend || !webhookConfig;
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -82,6 +90,14 @@ export function AppSidebar() {
                             <span className="font-bold text-destructive-foreground">
                               {urgentCount > 9 ? "9+" : urgentCount}
                             </span>
+                          </span>
+                        )}
+                        {/* Warning badge for unconfigured APIs on Settings */}
+                        {item.url === "/settings" && hasUnconfiguredApi && (
+                          <span 
+                            className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full bg-amber-500 h-4 w-4"
+                          >
+                            <AlertTriangle className="h-2.5 w-2.5 text-white" />
                           </span>
                         )}
                       </div>
