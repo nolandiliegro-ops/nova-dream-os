@@ -28,6 +28,11 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Parse request body for test mode
+    const body = await req.json().catch(() => ({}));
+    const testMode = body.test === true;
+    const testEmail = body.email;
+
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
       console.error("RESEND_API_KEY not configured");
@@ -39,6 +44,69 @@ serve(async (req: Request): Promise<Response> => {
 
     const ResendClass = await loadResend();
     const resend = new ResendClass(resendApiKey);
+
+    // Test mode: send confirmation email
+    if (testMode && testEmail) {
+      const { error: emailError } = await resend.emails.send({
+        from: "Nova Life OS <onboarding@resend.dev>",
+        to: [testEmail],
+        subject: "🚀 Nova Life OS - Système de rappels activé !",
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px;">🎉 Félicitations Nono !</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Ton système de rappels est maintenant actif</p>
+              </div>
+              <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 12px 12px;">
+                <p style="font-size: 16px; color: #333; margin: 0 0 15px 0;">
+                  Ton système de rappels automatiques est maintenant <strong style="color: #8B5CF6;">100% opérationnel</strong> !
+                </p>
+                <p style="font-size: 14px; color: #666; margin: 0 0 20px 0;">
+                  Tu recevras désormais un email récapitulatif <strong>24h avant</strong> chaque deadline projet ou tâche prioritaire.
+                </p>
+                <div style="background: white; border-left: 4px solid #8B5CF6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                  <p style="margin: 0; font-size: 14px; color: #333;">
+                    📅 <strong>Projets actifs</strong> avec deadline à venir<br>
+                    📋 <strong>Tâches prioritaires</strong> (haute et moyenne priorité)
+                  </p>
+                </div>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0;">
+                  Nova Life OS - Ton copilote vers le succès 🚀
+                </p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+      });
+
+      if (emailError) {
+        console.error("Test email error:", emailError);
+        return new Response(
+          JSON.stringify({ success: false, error: emailError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Test email sent successfully to ${testEmail}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          test_email_sent: true, 
+          recipient: testEmail,
+          message: "Email de test envoyé avec succès !"
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
