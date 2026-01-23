@@ -4,6 +4,7 @@ import { ActiveProjectsWidget } from "@/components/dashboard/ActiveProjectsWidge
 import { DeadlineWidget } from "@/components/dashboard/DeadlineWidget";
 import { TasksWidget } from "@/components/dashboard/TasksWidget";
 import { ToolsWidget } from "@/components/dashboard/ToolsWidget";
+import { Goal100kWidget } from "@/components/dashboard/Goal100kWidget";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,11 @@ export default function Dashboard() {
           {/* Deadline Countdown */}
           <div className="md:col-span-1">
             <DeadlineWidget />
+          </div>
+
+          {/* Goal 100k Widget */}
+          <div className="md:col-span-1">
+            <Goal100kWidget />
           </div>
 
           {/* Tools Widget */}

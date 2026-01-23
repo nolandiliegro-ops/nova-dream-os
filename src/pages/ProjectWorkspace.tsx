@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useProject } from "@/hooks/useProjects";
@@ -24,6 +24,7 @@ import { ProjectFinancesWidget } from "@/components/project-workspace/ProjectFin
 import { ProjectDocumentsWidget } from "@/components/project-workspace/ProjectDocumentsWidget";
 import { ProjectTimelineWidget } from "@/components/project-workspace/ProjectTimelineWidget";
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 const segmentLabels: Record<string, string> = {
   ecommerce: "E-commerce",
@@ -80,14 +81,35 @@ export default function ProjectWorkspace() {
     }
   }, [visibleWidgets, id]);
 
+  // Keyboard shortcuts for Focus Mode
+  const toggleFocusMode = useCallback(() => {
+    setIsFocusMode((prev) => !prev);
+  }, []);
+
+  const exitFocusMode = useCallback(() => {
+    setIsFocusMode(false);
+  }, []);
+
+  useKeyboardShortcuts([
+    {
+      key: "f",
+      metaKey: true,
+      shiftKey: true,
+      callback: toggleFocusMode,
+    },
+    {
+      key: "Escape",
+      callback: exitFocusMode,
+      enabled: isFocusMode,
+    },
+  ]);
+
   const toggleWidget = (widget: keyof WidgetVisibility) => {
-    setVisibleWidgets(prev => ({
+    setVisibleWidgets((prev) => ({
       ...prev,
-      [widget]: !prev[widget]
+      [widget]: !prev[widget],
     }));
   };
-
-  const exitFocusMode = () => setIsFocusMode(false);
 
   if (isLoading) {
     return (
@@ -175,6 +197,7 @@ export default function ProjectWorkspace() {
               >
                 <Focus className="h-4 w-4" />
                 <span className="hidden sm:inline">Mode Focus</span>
+                <span className="hidden md:inline text-xs opacity-50 ml-1">⌘⇧F</span>
               </Button>
             </div>
 

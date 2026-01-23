@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUrgentDeadlines } from "@/hooks/useProjects";
 import {
   LayoutDashboard,
   Wallet,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -37,6 +39,7 @@ const navItems = [
 
 export function AppSidebar() {
   const { signOut, user } = useAuth();
+  const { count: urgentCount, hasUrgent } = useUrgentDeadlines(48);
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -66,7 +69,22 @@ export function AppSidebar() {
                       className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sidebar-foreground/70 transition-all hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
                     >
-                      <item.icon className="h-5 w-5" />
+                      <div className="relative">
+                        <item.icon className="h-5 w-5" />
+                        {/* Red badge for urgent deadlines on Projects */}
+                        {item.url === "/projects" && hasUrgent && (
+                          <span 
+                            className={cn(
+                              "absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full bg-destructive animate-pulse",
+                              urgentCount > 9 ? "h-4 w-4 text-[8px]" : "h-4 w-4 text-[10px]"
+                            )}
+                          >
+                            <span className="font-bold text-destructive-foreground">
+                              {urgentCount > 9 ? "9+" : urgentCount}
+                            </span>
+                          </span>
+                        )}
+                      </div>
                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>

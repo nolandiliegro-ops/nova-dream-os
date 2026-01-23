@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemo } from "react";
 
 export interface Project {
   id: string;
@@ -146,4 +147,60 @@ export function useDeleteProject() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
+}
+
+// Hook to get projects with urgent deadlines (within specified hours)
+export function useUrgentDeadlines(hoursThreshold: number = 48) {
+  const { data: projects } = useProjects();
+
+  const urgentProjects = useMemo(() => {
+    if (!projects) return [];
+
+    const now = new Date();
+    const threshold = new Date(now.getTime() + hoursThreshold * 60 * 60 * 1000);
+
+    return projects
+      .filter((p) => {
+        if (!p.deadline || p.status === "completed") return false;
+        const deadlineDate = new Date(p.deadline);
+        return deadlineDate <= threshold && deadlineDate >= now;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.deadline!).getTime();
+        const dateB = new Date(b.deadline!).getTime();
+        return dateA - dateB;
+      });
+  }, [projects, hoursThreshold]);
+
+  return {
+    urgentProjects,
+    count: urgentProjects.length,
+    hasUrgent: urgentProjects.length > 0,
+  };
+}
+
+// Hook to get the next deadline project (closest deadline)
+export function useNextDeadline() {
+  const { data: projects } = useProjects();
+
+  const nextDeadlineProject = useMemo(() => {
+    if (!projects) return null;
+
+    const now = new Date();
+    const projectsWithDeadlines = projects
+      .filter((p) => {
+        if (!p.deadline || p.status === "completed") return false;
+        const deadlineDate = new Date(p.deadline);
+        return deadlineDate >= now;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.deadline!).getTime();
+        const dateB = new Date(b.deadline!).getTime();
+        return dateA - dateB;
+      });
+
+    return projectsWithDeadlines[0] || null;
+  }, [projects]);
+
+  return nextDeadlineProject;
 }
