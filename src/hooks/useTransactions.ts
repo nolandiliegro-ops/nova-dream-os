@@ -42,6 +42,25 @@ export function useTransactions(mode?: "work" | "personal") {
   });
 }
 
+export function useTransactionsBySegment(segment: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["transactions", "segment", segment],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("segment", segment!)
+        .order("date", { ascending: false });
+
+      if (error) throw error;
+      return data as Transaction[];
+    },
+    enabled: !!user && !!segment,
+  });
+}
+
 export function useTransactionStats(mode?: "work" | "personal") {
   const { data: transactions } = useTransactions(mode);
 

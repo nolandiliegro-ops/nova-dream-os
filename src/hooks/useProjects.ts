@@ -43,6 +43,27 @@ export function useProjects(mode?: "work" | "personal") {
   });
 }
 
+export function useProject(projectId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["project", projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+      
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", projectId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as Project | null;
+    },
+    enabled: !!user && !!projectId,
+  });
+}
+
 export function useProjectStats(mode?: "work" | "personal") {
   const { data: projects } = useProjects(mode);
 

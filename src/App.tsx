@@ -9,6 +9,7 @@ import { ModeProvider } from "@/contexts/ModeContext";
 import Index from "./pages/Index";
 import Finances from "./pages/Finances";
 import Projects from "./pages/Projects";
+import ProjectWorkspace from "./pages/ProjectWorkspace";
 import Tasks from "./pages/Tasks";
 import Assistant from "./pages/Assistant";
 import Documents from "./pages/Documents";
@@ -30,6 +31,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/finances" element={<Finances />} />
                 <Route path="/projects" element={<Projects />} />
+                <Route path="/projects/:id" element={<ProjectWorkspace />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/assistant" element={<Assistant />} />
                 <Route path="/documents" element={<Documents />} />
