@@ -242,6 +242,7 @@ export type Database = {
           description: string | null
           id: string
           mode: string
+          project_id: string | null
           segment: string
           type: string
           updated_at: string
@@ -256,6 +257,7 @@ export type Database = {
           description?: string | null
           id?: string
           mode?: string
+          project_id?: string | null
           segment: string
           type: string
           updated_at?: string
@@ -270,12 +272,21 @@ export type Database = {
           description?: string | null
           id?: string
           mode?: string
+          project_id?: string | null
           segment?: string
           type?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_goals: {
         Row: {
