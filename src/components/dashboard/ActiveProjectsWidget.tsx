@@ -1,5 +1,5 @@
 import { GlassCard } from "./GlassCard";
-import { ShoppingCart, Video, Briefcase, Sparkles, ChevronRight, FolderKanban } from "lucide-react";
+import { ShoppingCart, Video, Briefcase, Sparkles, ChevronRight, FolderKanban, Search, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjects, useProjectStats } from "@/hooks/useProjects";
 import { useMode } from "@/contexts/ModeContext";
@@ -10,6 +10,8 @@ const segmentIcons = {
   tiktok: Video,
   consulting: Briefcase,
   oracle: Sparkles,
+  data: Search,
+  tech: Smartphone,
   other: FolderKanban,
 };
 
@@ -18,6 +20,8 @@ const segmentColors = {
   tiktok: "bg-segment-tiktok text-white",
   consulting: "bg-segment-consulting text-white",
   oracle: "bg-segment-oracle text-white",
+  data: "bg-segment-data text-white",
+  tech: "bg-segment-tech text-white",
   other: "bg-muted text-foreground",
 };
 
@@ -26,6 +30,8 @@ const segmentBgColors = {
   tiktok: "bg-segment-tiktok/10",
   consulting: "bg-segment-consulting/10",
   oracle: "bg-segment-oracle/10",
+  data: "bg-segment-data/10",
+  tech: "bg-segment-tech/10",
   other: "bg-muted/50",
 };
 
@@ -34,6 +40,8 @@ const segmentLabels = {
   tiktok: "TikTok",
   consulting: "Consulting",
   oracle: "Oracle",
+  data: "Les Enquêtes",
+  tech: "Dream App",
   other: "Autre",
 };
 
