@@ -17,6 +17,8 @@ const segments = [
   { value: "tiktok", label: "TikTok" },
   { value: "consulting", label: "Consulting" },
   { value: "oracle", label: "Oracle" },
+  { value: "data", label: "Les Enquêtes" },
+  { value: "tech", label: "Dream App" },
   { value: "other", label: "Autre" },
 ];
 
@@ -25,6 +27,8 @@ const segmentColors: Record<string, string> = {
   tiktok: "border-segment-tiktok text-segment-tiktok",
   consulting: "border-segment-consulting text-segment-consulting",
   oracle: "border-segment-oracle text-segment-oracle",
+  data: "border-segment-data text-segment-data",
+  tech: "border-segment-tech text-segment-tech",
   other: "border-muted-foreground text-muted-foreground",
 };
 
@@ -33,6 +37,8 @@ const segmentBgColors: Record<string, string> = {
   tiktok: "bg-segment-tiktok/20",
   consulting: "bg-segment-consulting/20",
   oracle: "bg-segment-oracle/20",
+  data: "bg-segment-data/20",
+  tech: "bg-segment-tech/20",
   other: "bg-muted",
 };
 
@@ -49,7 +55,7 @@ export default function Projects() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "other",
+    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other",
     status: "planned" as "planned" | "in_progress" | "completed" | "on_hold",
     deadline: "",
     budget: "",

@@ -7,7 +7,7 @@ export interface Transaction {
   user_id: string;
   amount: number;
   type: "income" | "expense";
-  segment: "ecommerce" | "tiktok" | "consulting" | "oracle" | "other";
+  segment: "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other";
   category: string | null;
   description: string | null;
   date: string;

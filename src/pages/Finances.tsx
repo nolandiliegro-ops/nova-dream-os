@@ -18,6 +18,8 @@ const segments = [
   { value: "tiktok", label: "TikTok", color: "bg-segment-tiktok" },
   { value: "consulting", label: "Consulting", color: "bg-segment-consulting" },
   { value: "oracle", label: "Oracle", color: "bg-segment-oracle" },
+  { value: "data", label: "Les Enquêtes", color: "bg-segment-data" },
+  { value: "tech", label: "Dream App", color: "bg-segment-tech" },
   { value: "other", label: "Autre", color: "bg-muted" },
 ];
 
@@ -27,7 +29,7 @@ export default function Finances() {
   const [formData, setFormData] = useState({
     amount: "",
     type: "income" as "income" | "expense",
-    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "other",
+    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other",
     category: "",
     description: "",
     date: new Date().toISOString().split("T")[0],

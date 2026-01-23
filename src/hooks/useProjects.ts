@@ -7,7 +7,7 @@ export interface Project {
   user_id: string;
   name: string;
   description: string | null;
-  segment: "ecommerce" | "tiktok" | "consulting" | "oracle" | "other";
+  segment: "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other";
   status: "planned" | "in_progress" | "completed" | "on_hold";
   progress: number;
   deadline: string | null;

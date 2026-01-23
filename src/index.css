@@ -45,6 +45,8 @@
     --segment-tiktok: 270 70% 65%;
     --segment-consulting: 217 91% 60%;
     --segment-oracle: 25 95% 53%;
+    --segment-data: 187 85% 53%;
+    --segment-tech: 330 81% 60%;
 
     /* Glassmorphism */
     --glass-bg: 0 0% 100% / 0.1;
@@ -137,6 +139,12 @@
   }
   .segment-oracle {
     --segment-color: var(--segment-oracle);
+  }
+  .segment-data {
+    --segment-color: var(--segment-data);
+  }
+  .segment-tech {
+    --segment-color: var(--segment-tech);
   }
 
   /* Bento Grid */

@@ -63,6 +63,8 @@ export default {
           tiktok: "hsl(var(--segment-tiktok))",
           consulting: "hsl(var(--segment-consulting))",
           oracle: "hsl(var(--segment-oracle))",
+          data: "hsl(var(--segment-data))",
+          tech: "hsl(var(--segment-tech))",
         },
       },
       borderRadius: {
