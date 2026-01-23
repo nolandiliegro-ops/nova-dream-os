@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask } from "@/hooks/useTasks";
+import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, Task } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
 import { toast } from "sonner";
 
@@ -31,6 +31,8 @@ function formatTime(minutes: number): string {
 export default function Tasks() {
   const { mode } = useMode();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -38,6 +40,15 @@ export default function Tasks() {
     project_id: "",
     due_date: "",
     estimated_time: "60",
+  });
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    description: "",
+    priority: "medium" as "low" | "medium" | "high",
+    project_id: "",
+    due_date: "",
+    estimated_time: "60",
+    time_spent: "0",
   });
 
   const { data: tasks, isLoading } = useTasks(mode);
@@ -76,6 +87,44 @@ export default function Tasks() {
       });
     } catch (error) {
       toast.error("Erreur lors de la création");
+    }
+  };
+
+  const handleEditClick = (task: Task) => {
+    setEditingTask(task);
+    setEditFormData({
+      title: task.title,
+      description: task.description || "",
+      priority: task.priority as "low" | "medium" | "high",
+      project_id: task.project_id || "",
+      due_date: task.due_date || "",
+      estimated_time: task.estimated_time.toString(),
+      time_spent: task.time_spent.toString(),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTask) return;
+    
+    try {
+      await updateTask.mutateAsync({
+        id: editingTask.id,
+        title: editFormData.title,
+        description: editFormData.description || null,
+        priority: editFormData.priority,
+        project_id: editFormData.project_id || null,
+        due_date: editFormData.due_date || null,
+        estimated_time: parseInt(editFormData.estimated_time) || 60,
+        time_spent: parseInt(editFormData.time_spent) || 0,
+      });
+      
+      toast.success("Tâche mise à jour !");
+      setIsEditDialogOpen(false);
+      setEditingTask(null);
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 
@@ -290,15 +339,17 @@ export default function Tasks() {
                 <div 
                   key={task.id}
                   className={cn(
-                    "flex items-center gap-4 rounded-lg border-l-4 bg-muted/30 p-4 transition-all hover:bg-muted/50",
+                    "flex items-center gap-4 rounded-lg border-l-4 bg-muted/30 p-4 transition-all hover:bg-muted/50 cursor-pointer",
                     task.priority === "high" ? "border-l-destructive" : 
                     task.priority === "medium" ? "border-l-segment-oracle" : "border-l-segment-consulting",
                     task.status === "completed" && "opacity-60"
                   )}
+                  onClick={() => handleEditClick(task)}
                 >
                   <Checkbox 
                     checked={task.status === "completed"} 
                     onCheckedChange={() => handleToggle(task.id, task.status)}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   
                   <div className="flex-1 min-w-0">
@@ -344,6 +395,111 @@ export default function Tasks() {
             </p>
           )}
         </GlassCard>
+
+        {/* Edit Task Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Modifier la tâche</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">Titre</Label>
+                <Input
+                  id="edit-title"
+                  value={editFormData.title}
+                  onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-priority">Priorité</Label>
+                  <Select
+                    value={editFormData.priority}
+                    onValueChange={(value: typeof editFormData.priority) => setEditFormData({ ...editFormData, priority: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">Haute</SelectItem>
+                      <SelectItem value="medium">Moyenne</SelectItem>
+                      <SelectItem value="low">Basse</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-project">Projet</Label>
+                  <Select
+                    value={editFormData.project_id}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, project_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Aucun projet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Aucun projet</SelectItem>
+                      {projects?.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-due_date">Échéance</Label>
+                  <Input
+                    id="edit-due_date"
+                    type="date"
+                    value={editFormData.due_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, due_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-estimated_time">Temps estimé (min)</Label>
+                  <Input
+                    id="edit-estimated_time"
+                    type="number"
+                    value={editFormData.estimated_time}
+                    onChange={(e) => setEditFormData({ ...editFormData, estimated_time: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-time_spent">Temps passé (min)</Label>
+                <Input
+                  id="edit-time_spent"
+                  type="number"
+                  value={editFormData.time_spent}
+                  onChange={(e) => setEditFormData({ ...editFormData, time_spent: e.target.value })}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Input
+                  id="edit-description"
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  placeholder="Description optionnelle"
+                />
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={updateTask.isPending}>
+                {updateTask.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Enregistrer les modifications"
+                )}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

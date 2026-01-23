@@ -87,7 +87,7 @@ export function ActiveProjectsWidget() {
           return (
             <Link
               key={segment}
-              to="/projects"
+              to={`/projects?segment=${segment}`}
               className={cn(
                 "flex flex-col items-center gap-2 rounded-xl p-3 transition-all hover:scale-105",
                 segmentBgColors[segment]
