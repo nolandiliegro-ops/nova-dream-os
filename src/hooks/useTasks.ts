@@ -44,6 +44,25 @@ export function useTasks(mode?: "work" | "personal") {
   });
 }
 
+export function useTasksByProject(projectId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["tasks", "project", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("project_id", projectId!)
+        .order("due_date", { ascending: true, nullsFirst: false });
+
+      if (error) throw error;
+      return data as Task[];
+    },
+    enabled: !!user && !!projectId,
+  });
+}
+
 export function useTaskStats(mode?: "work" | "personal") {
   const { data: tasks } = useTasks(mode);
 

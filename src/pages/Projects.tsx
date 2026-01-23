@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { useMode } from "@/contexts/ModeContext";
@@ -61,6 +61,7 @@ const statusConfig = {
 };
 
 export default function Projects() {
+  const navigate = useNavigate();
   const { mode } = useMode();
   const [searchParams] = useSearchParams();
   const [segmentFilter, setSegmentFilter] = useState<string | null>(searchParams.get("segment"));
@@ -388,7 +389,7 @@ export default function Projects() {
                     "p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02]",
                     segmentColors[project.segment]
                   )}
-                  onClick={() => handleEditClick(project)}
+                  onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className={cn("rounded-lg p-2", segmentBgColors[project.segment])}>
