@@ -8,10 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FolderKanban, Clock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, FolderKanban, Clock, CheckCircle2, AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useProjects, useProjectStats, useCreateProject, useUpdateProject } from "@/hooks/useProjects";
+import { useProjects, useProjectStats, useCreateProject, useUpdateProject, useDeleteProject } from "@/hooks/useProjects";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const segments = [
   { value: "ecommerce", label: "E-commerce" },
@@ -57,6 +67,8 @@ export default function Projects() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<typeof projects extends (infer T)[] | undefined ? T | null : never>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -84,6 +96,7 @@ export default function Projects() {
   const stats = useProjectStats(mode);
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
 
   // Filter projects by segment
   const filteredProjects = segmentFilter 
@@ -520,16 +533,63 @@ export default function Projects() {
                 />
               </div>
               
-              <Button type="submit" className="w-full" disabled={updateProject.isPending}>
-                {updateProject.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Enregistrer les modifications"
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setProjectToDelete(editingProject?.id || null);
+                    setDeleteConfirmOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button type="submit" className="flex-1" disabled={updateProject.isPending}>
+                  {updateProject.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Enregistrer"
+                  )}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer ce projet ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action est irréversible. Le projet sera définitivement supprimé.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  if (projectToDelete) {
+                    try {
+                      await deleteProject.mutateAsync(projectToDelete);
+                      toast.success("Projet supprimé");
+                      setIsEditDialogOpen(false);
+                      setDeleteConfirmOpen(false);
+                      setProjectToDelete(null);
+                      setEditingProject(null);
+                    } catch {
+                      toast.error("Erreur lors de la suppression");
+                    }
+                  }
+                }}
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

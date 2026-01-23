@@ -130,6 +130,14 @@ serve(async (req) => {
       }
     }
 
+    // Calculate path to 100k
+    const remainingFor100k = Math.max(0, 100000 - contextData.totalRevenue);
+    const monthsLeft = Math.max(1, 12 - new Date().getMonth());
+    const monthlyTargetFor100k = remainingFor100k / monthsLeft;
+
+    // Calculate total budget across projects
+    const totalBudget = contextData.activeProjects.reduce((sum, p) => sum + (p.budget || 0), 0);
+
     // Build system prompt with real context
     const systemPrompt = `Tu es Nova, l'assistant IA personnel de Nono. Tu l'aides à atteindre son objectif de ${contextData.annualGoal.toLocaleString("fr-FR")} euros de CA en ${new Date().getFullYear()}.
 
@@ -140,10 +148,17 @@ CONTEXTE ACTUEL EN TEMPS RÉEL :
 - Tâches urgentes/prioritaires : ${contextData.urgentTasks}
 - Documents dans le coffre-fort : ${contextData.recentDocuments.length}
 
+OBJECTIF INTERMÉDIAIRE - 100 000€ PREMIERS EUROS :
+- Revenus actuels : ${contextData.totalRevenue.toLocaleString("fr-FR")}€
+- Reste à atteindre : ${remainingFor100k.toLocaleString("fr-FR")}€
+- Mois restants dans l'année : ${monthsLeft}
+- Objectif mensuel requis : ${monthlyTargetFor100k.toLocaleString("fr-FR")}€/mois
+- Budget total investi : ${totalBudget.toLocaleString("fr-FR")}€
+
 MES 5 PILIERS BUSINESS :
 ${contextData.activeProjects.length > 0 
-  ? contextData.activeProjects.map(p => 
-      `• ${p.name} [${p.segment.toUpperCase()}]
+  ? contextData.activeProjects.map((p, index) => 
+      `${index + 1}. ${p.name} [${p.segment.toUpperCase()}]
    Budget: ${p.budget ? p.budget.toLocaleString("fr-FR") + "€" : "Non défini"}
    Deadline: ${p.deadline ? new Date(p.deadline).toLocaleDateString("fr-FR") : "Non définie"}
    Progression: ${p.progress}%
@@ -171,6 +186,25 @@ CAPACITÉS SPÉCIALES :
 - Si on te demande d'analyser un document, indique que l'utilisateur peut cliquer sur "Analyse mon dernier document"
 - Tu connais le contenu des documents qui ont été analysés (résumé stocké)
 
+ANALYSES STRATÉGIQUES DISPONIBLES :
+- "état des lieux" / "analyse de mes piliers" : Liste structurée des 5 projets avec budgets et deadlines
+- "où concentrer mon énergie" / "priorités pour les 100k" : Analyse stratégique basée sur les budgets/deadlines/progressions
+- "ROI de mes projets" : Comparaison budget investi vs revenus générés
+
+LOGIQUE D'ANALYSE POUR LES 100 000 PREMIERS EUROS :
+1. Calcule le revenu restant nécessaire : ${remainingFor100k.toLocaleString("fr-FR")}€
+2. Identifie les projets avec le meilleur ratio budget/potentiel
+3. Priorise les projets avec deadlines proches
+4. Suggère des actions concrètes pour chaque pilier
+
+STRUCTURE DE RÉPONSE POUR "ANALYSE DES 5 PILIERS" :
+Pour chaque projet, présente :
+- Nom et segment
+- Budget et deadline
+- Progression actuelle
+- Recommandation stratégique (1-2 phrases)
+- Action prioritaire (1 phrase)
+
 INSTRUCTIONS :
 - Réponds de façon concise, actionnable et motivante
 - Utilise le tutoiement et sois direct
@@ -179,7 +213,8 @@ INSTRUCTIONS :
 - Si on te demande les priorités, liste les tâches urgentes
 - Si on te parle de documents, mentionne ceux dans le coffre-fort
 - Encourage Nono à rester focus sur son objectif 1M€
-- Si on te demande un "état des lieux" ou "analyse de mes piliers", présente chaque projet avec son budget, sa deadline et sa progression de façon structurée`;
+- Si on te demande un "état des lieux" ou "analyse de mes piliers", présente chaque projet avec son budget, sa deadline et sa progression de façon structurée
+- Si on te demande "où concentrer mon énergie pour les 100k", fais une analyse stratégique en priorisant les projets à fort potentiel de revenus rapides`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

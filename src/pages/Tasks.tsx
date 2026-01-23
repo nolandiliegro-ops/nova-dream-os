@@ -8,11 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2 } from "lucide-react";
+import { Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, Task } from "@/hooks/useTasks";
+import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, useDeleteTask, Task } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const priorityConfig = {
   high: { label: "Haute", color: "text-destructive", bg: "bg-destructive/20" },
@@ -32,6 +42,8 @@ export default function Tasks() {
   const { mode } = useMode();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -57,6 +69,7 @@ export default function Tasks() {
   const createTask = useCreateTask();
   const toggleComplete = useToggleTaskComplete();
   const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -490,16 +503,63 @@ export default function Tasks() {
                 />
               </div>
               
-              <Button type="submit" className="w-full" disabled={updateTask.isPending}>
-                {updateTask.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Enregistrer les modifications"
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setTaskToDelete(editingTask?.id || null);
+                    setDeleteConfirmOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button type="submit" className="flex-1" disabled={updateTask.isPending}>
+                  {updateTask.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Enregistrer"
+                  )}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer cette tâche ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action est irréversible. La tâche sera définitivement supprimée.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  if (taskToDelete) {
+                    try {
+                      await deleteTask.mutateAsync(taskToDelete);
+                      toast.success("Tâche supprimée");
+                      setIsEditDialogOpen(false);
+                      setDeleteConfirmOpen(false);
+                      setTaskToDelete(null);
+                      setEditingTask(null);
+                    } catch {
+                      toast.error("Erreur lors de la suppression");
+                    }
+                  }
+                }}
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
