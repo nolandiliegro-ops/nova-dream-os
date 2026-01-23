@@ -7,6 +7,7 @@ import { ToolsWidget } from "@/components/dashboard/ToolsWidget";
 import { Goal100kWidget } from "@/components/dashboard/Goal100kWidget";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
+import { useLoginNotifications } from "@/hooks/useLoginNotifications";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
@@ -14,6 +15,9 @@ export default function Dashboard() {
   
   // Enable realtime notifications for new transactions
   useRealtimeTransactions();
+  
+  // Show login notifications (deadlines, missing transactions, milestones)
+  useLoginNotifications();
 
   return (
     <DashboardLayout>

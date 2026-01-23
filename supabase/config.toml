@@ -9,5 +9,8 @@ verify_jwt = false
 [functions.webhook-receiver]
 verify_jwt = false
 
+[functions.check-api-status]
+verify_jwt = false
+
 [functions.send-deadline-reminder]
 verify_jwt = false

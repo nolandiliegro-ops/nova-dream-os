@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { useApiConfig, useApiConfigs, useUpsertApiConfig } from "@/hooks/useApiConfigs";
+import { useApiConfig, useApiConfigs, useUpsertApiConfig, useApiStatus } from "@/hooks/useApiConfigs";
 
 // Generate a random token
 function generateToken(): string {
@@ -44,6 +44,7 @@ export function AutomationsSection({
   setWebhookToken,
 }: AutomationsSectionProps) {
   const { data: allConfigs } = useApiConfigs();
+  const { data: apiStatus, isLoading: apiStatusLoading } = useApiStatus();
   const upsertApiConfig = useUpsertApiConfig();
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
@@ -117,8 +118,8 @@ export function AutomationsSection({
     }
   };
 
-  // Automation status list
-  const automations = [
+  // Automation status list - dynamic based on API status
+  const automations = useMemo(() => [
     {
       id: "webhook",
       name: "Webhook n8n",
@@ -132,10 +133,10 @@ export function AutomationsSection({
       name: "Rappels Email",
       description: "Notifications 24h avant les deadlines",
       icon: Mail,
-      status: "ready", // Could be enhanced to check RESEND_API_KEY
+      status: apiStatusLoading ? "loading" : apiStatus?.resend ? "active" : "inactive",
       color: "segment-oracle",
     },
-  ];
+  ], [webhookConfig, apiStatus, apiStatusLoading]);
 
   return (
     <GlassCard className="p-6">
@@ -172,19 +173,19 @@ export function AutomationsSection({
               className={
                 automation.status === "active"
                   ? "bg-segment-ecommerce/20 text-segment-ecommerce border-segment-ecommerce/30"
-                  : automation.status === "ready"
-                  ? "bg-segment-oracle/20 text-segment-oracle border-segment-oracle/30"
-                  : "bg-muted text-muted-foreground"
+                  : automation.status === "loading"
+                  ? "bg-muted text-muted-foreground animate-pulse"
+                  : "bg-destructive/20 text-destructive border-destructive/30"
               }
             >
               {automation.status === "active" ? (
                 <CheckCircle2 className="h-3 w-3 mr-1" />
-              ) : automation.status === "ready" ? (
-                <Clock className="h-3 w-3 mr-1" />
+              ) : automation.status === "loading" ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               ) : (
                 <XCircle className="h-3 w-3 mr-1" />
               )}
-              {automation.status === "active" ? "Actif" : automation.status === "ready" ? "Prêt" : "Inactif"}
+              {automation.status === "active" ? "Configuré" : automation.status === "loading" ? "Vérification..." : "Non configuré"}
             </Badge>
           </div>
         ))}
