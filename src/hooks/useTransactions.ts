@@ -13,6 +13,7 @@ export interface Transaction {
   date: string;
   mode: "work" | "personal";
   counts_toward_goal: boolean;
+  project_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +59,26 @@ export function useTransactionsBySegment(segment: string | undefined) {
       return data as Transaction[];
     },
     enabled: !!user && !!segment,
+  });
+}
+
+// Hook pour récupérer les transactions d'un projet spécifique
+export function useTransactionsByProject(projectId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["transactions", "project", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("project_id", projectId!)
+        .order("date", { ascending: false });
+
+      if (error) throw error;
+      return data as Transaction[];
+    },
+    enabled: !!user && !!projectId,
   });
 }
 

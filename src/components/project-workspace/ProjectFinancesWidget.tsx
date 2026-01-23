@@ -7,23 +7,28 @@ import {
   TrendingUp,
   TrendingDown,
   Loader2,
-  Target
+  Target,
+  Link2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTransactionsBySegment } from "@/hooks/useTransactions";
+import { useTransactionsBySegment, useTransactionsByProject } from "@/hooks/useTransactions";
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 
 interface ProjectFinancesWidgetProps {
+  projectId: string;
   segment: string;
   budget: number | null;
 }
 
-export function ProjectFinancesWidget({ segment, budget }: ProjectFinancesWidgetProps) {
+export function ProjectFinancesWidget({ projectId, segment, budget }: ProjectFinancesWidgetProps) {
   const navigate = useNavigate();
-  const { data: transactions, isLoading } = useTransactionsBySegment(segment);
+  const { data: segmentTransactions, isLoading: isLoadingSegment } = useTransactionsBySegment(segment);
+  const { data: projectTransactions, isLoading: isLoadingProject } = useTransactionsByProject(projectId);
 
-  // Calculate totals
-  const totals = transactions?.reduce(
+  const isLoading = isLoadingSegment || isLoadingProject;
+
+  // Calculate segment totals
+  const segmentTotals = segmentTransactions?.reduce(
     (acc, t) => {
       if (t.type === "income") {
         acc.revenue += Number(t.amount);
@@ -35,11 +40,26 @@ export function ProjectFinancesWidget({ segment, budget }: ProjectFinancesWidget
     { revenue: 0, expenses: 0 }
   ) || { revenue: 0, expenses: 0 };
 
-  const profit = totals.revenue - totals.expenses;
-  const budgetProgress = budget ? (totals.expenses / budget) * 100 : 0;
+  // Calculate project-specific totals
+  const projectTotals = projectTransactions?.reduce(
+    (acc, t) => {
+      if (t.type === "income") {
+        acc.revenue += Number(t.amount);
+      } else {
+        acc.expenses += Number(t.amount);
+      }
+      return acc;
+    },
+    { revenue: 0, expenses: 0 }
+  ) || { revenue: 0, expenses: 0 };
 
-  // Prepare chart data (last 6 months)
-  const chartData = transactions
+  const segmentProfit = segmentTotals.revenue - segmentTotals.expenses;
+  const projectProfit = projectTotals.revenue - projectTotals.expenses;
+  const budgetProgress = budget ? (segmentTotals.expenses / budget) * 100 : 0;
+  const hasProjectTransactions = projectTransactions && projectTransactions.length > 0;
+
+  // Prepare chart data (last 6 months) - use segment transactions for chart
+  const chartData = segmentTransactions
     ?.reduce((acc: { date: string; revenue: number; expenses: number }[], t) => {
       const month = new Date(t.date).toLocaleDateString('fr-FR', { month: 'short' });
       const existing = acc.find(d => d.date === month);
@@ -68,7 +88,7 @@ export function ProjectFinancesWidget({ segment, budget }: ProjectFinancesWidget
         <Button 
           variant="ghost" 
           size="sm"
-          onClick={() => navigate(`/finances?segment=${segment}`)}
+          onClick={() => navigate(`/finances?segment=${segment}&projectId=${projectId}`)}
         >
           <ExternalLink className="h-4 w-4" />
         </Button>
@@ -80,36 +100,58 @@ export function ProjectFinancesWidget({ segment, budget }: ProjectFinancesWidget
         </div>
       ) : (
         <div className="flex-1 space-y-4">
-          {/* Stats Grid */}
+          {/* Project-specific profit (if any project transactions) */}
+          {hasProjectTransactions && (
+            <div className={cn(
+              "p-3 rounded-lg text-center border-2 border-dashed",
+              projectProfit >= 0 ? "bg-segment-ecommerce/10 border-segment-ecommerce/30" : "bg-destructive/10 border-destructive/30"
+            )}>
+              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-1">
+                <Link2 className="h-3 w-3" />
+                <span>Profit projet (lié)</span>
+              </div>
+              <p className={cn(
+                "text-xl font-bold",
+                projectProfit >= 0 ? "text-segment-ecommerce" : "text-destructive"
+              )}>
+                {projectProfit >= 0 ? "+" : ""}{projectProfit.toLocaleString('fr-FR')}€
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {projectTransactions?.length} transaction{projectTransactions && projectTransactions.length > 1 ? 's' : ''} liée{projectTransactions && projectTransactions.length > 1 ? 's' : ''}
+              </p>
+            </div>
+          )}
+
+          {/* Stats Grid - Segment level */}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-segment-ecommerce/10">
               <div className="flex items-center gap-1 text-segment-ecommerce mb-1">
                 <TrendingUp className="h-4 w-4" />
-                <span className="text-xs">Revenus</span>
+                <span className="text-xs">Revenus segment</span>
               </div>
-              <p className="font-bold">{totals.revenue.toLocaleString('fr-FR')}€</p>
+              <p className="font-bold">{segmentTotals.revenue.toLocaleString('fr-FR')}€</p>
             </div>
 
             <div className="p-3 rounded-lg bg-destructive/10">
               <div className="flex items-center gap-1 text-destructive mb-1">
                 <TrendingDown className="h-4 w-4" />
-                <span className="text-xs">Dépenses</span>
+                <span className="text-xs">Dépenses segment</span>
               </div>
-              <p className="font-bold">{totals.expenses.toLocaleString('fr-FR')}€</p>
+              <p className="font-bold">{segmentTotals.expenses.toLocaleString('fr-FR')}€</p>
             </div>
           </div>
 
-          {/* Profit */}
+          {/* Segment Profit */}
           <div className={cn(
             "p-3 rounded-lg text-center",
-            profit >= 0 ? "bg-segment-ecommerce/10" : "bg-destructive/10"
+            segmentProfit >= 0 ? "bg-segment-ecommerce/10" : "bg-destructive/10"
           )}>
-            <span className="text-xs text-muted-foreground">Profit net</span>
+            <span className="text-xs text-muted-foreground">Profit segment</span>
             <p className={cn(
               "text-xl font-bold",
-              profit >= 0 ? "text-segment-ecommerce" : "text-destructive"
+              segmentProfit >= 0 ? "text-segment-ecommerce" : "text-destructive"
             )}>
-              {profit >= 0 ? "+" : ""}{profit.toLocaleString('fr-FR')}€
+              {segmentProfit >= 0 ? "+" : ""}{segmentProfit.toLocaleString('fr-FR')}€
             </p>
           </div>
 
@@ -125,7 +167,7 @@ export function ProjectFinancesWidget({ segment, budget }: ProjectFinancesWidget
                   "font-medium",
                   budgetProgress > 100 ? "text-destructive" : "text-foreground"
                 )}>
-                  {totals.expenses.toLocaleString('fr-FR')}€ / {budget.toLocaleString('fr-FR')}€
+                  {segmentTotals.expenses.toLocaleString('fr-FR')}€ / {budget.toLocaleString('fr-FR')}€
                 </span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -179,14 +221,14 @@ export function ProjectFinancesWidget({ segment, budget }: ProjectFinancesWidget
           )}
 
           {/* Empty State */}
-          {(!transactions || transactions.length === 0) && (
+          {(!segmentTransactions || segmentTransactions.length === 0) && (
             <div className="text-center py-4 text-muted-foreground text-sm">
               <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>Aucune transaction pour ce segment</p>
               <Button
                 variant="link"
                 size="sm"
-                onClick={() => navigate(`/finances?segment=${segment}`)}
+                onClick={() => navigate(`/finances?segment=${segment}&projectId=${projectId}`)}
                 className="mt-2"
               >
                 Ajouter une transaction

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { useMode } from "@/contexts/ModeContext";
@@ -7,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Target, ArrowUpRight, ArrowDownRight, TrendingUp, Loader2 } from "lucide-react";
+import { Plus, Target, ArrowUpRight, ArrowDownRight, TrendingUp, Loader2, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTransactions, useTransactionStats, useCreateTransaction } from "@/hooks/useTransactions";
 import { useUserGoals } from "@/hooks/useUserGoals";
+import { useProjects } from "@/hooks/useProjects";
 import { toast } from "sonner";
 
 const segments = [
@@ -25,6 +27,9 @@ const segments = [
 
 export default function Finances() {
   const { mode } = useMode();
+  const [searchParams] = useSearchParams();
+  const preselectedProjectId = searchParams.get("projectId");
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     amount: "",
@@ -33,12 +38,17 @@ export default function Finances() {
     category: "",
     description: "",
     date: new Date().toISOString().split("T")[0],
+    project_id: preselectedProjectId || null as string | null,
   });
 
   const { data: transactions, isLoading } = useTransactions(mode);
+  const { data: projects } = useProjects(mode);
   const stats = useTransactionStats(mode);
   const createTransaction = useCreateTransaction();
   const { data: userGoals } = useUserGoals(2026);
+
+  // Filter projects by selected segment
+  const filteredProjects = projects?.filter(p => p.segment === formData.segment) || [];
 
   // Dynamic goal from user settings
   const objectif2026 = userGoals?.annual_revenue_goal ?? 1000000;
@@ -57,6 +67,7 @@ export default function Finances() {
         date: formData.date,
         mode: mode,
         counts_toward_goal: true,
+        project_id: formData.project_id,
       });
       
       toast.success("Transaction ajoutée !");
@@ -68,6 +79,7 @@ export default function Finances() {
         category: "",
         description: "",
         date: new Date().toISOString().split("T")[0],
+        project_id: null,
       });
     } catch (error) {
       toast.error("Erreur lors de l'ajout");
@@ -182,6 +194,35 @@ export default function Finances() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Description optionnelle"
                   />
+                </div>
+
+                {/* Project linking */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Link2 className="h-3.5 w-3.5" />
+                    Projet associé (optionnel)
+                  </Label>
+                  <Select
+                    value={formData.project_id || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, project_id: value === "none" ? null : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Aucun projet spécifique" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Aucun projet spécifique</SelectItem>
+                      {filteredProjects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {filteredProjects.length === 0 && formData.segment && (
+                    <p className="text-xs text-muted-foreground">
+                      Aucun projet dans ce segment
+                    </p>
+                  )}
                 </div>
                 
                 <Button type="submit" className="w-full" disabled={createTransaction.isPending}>
