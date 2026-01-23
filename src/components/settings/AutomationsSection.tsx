@@ -14,11 +14,11 @@ import {
   Mail,
   CheckCircle2,
   XCircle,
-  Clock
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useApiConfig, useApiConfigs, useUpsertApiConfig, useApiStatus } from "@/hooks/useApiConfigs";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Generate a random token
 function generateToken(): string {
@@ -44,10 +44,26 @@ export function AutomationsSection({
   setWebhookToken,
 }: AutomationsSectionProps) {
   const { data: allConfigs } = useApiConfigs();
-  const { data: apiStatus, isLoading: apiStatusLoading } = useApiStatus();
+  const { data: apiStatus, isLoading: apiStatusLoading, refetch: refetchApiStatus } = useApiStatus();
   const upsertApiConfig = useUpsertApiConfig();
+  const queryClient = useQueryClient();
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refresh API status handler
+  const handleRefreshStatus = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["api-status"] });
+      await refetchApiStatus();
+      toast.success("Statut des APIs actualisé !");
+    } catch {
+      toast.error("Erreur lors de l'actualisation");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // The full webhook URL
   const webhookReceiverUrl = useMemo(() => {
@@ -140,16 +156,28 @@ export function AutomationsSection({
 
   return (
     <GlassCard className="p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-segment-tiktok/20">
-          <Zap className="h-5 w-5 text-segment-tiktok" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-segment-tiktok/20">
+            <Zap className="h-5 w-5 text-segment-tiktok" />
+          </div>
+          <div>
+            <h3 className="font-semibold">Automatisations</h3>
+            <p className="text-xs text-muted-foreground">
+              Gère tes intégrations et webhooks
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold">Automatisations</h3>
-          <p className="text-xs text-muted-foreground">
-            Gère tes intégrations et webhooks
-          </p>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleRefreshStatus}
+          disabled={isRefreshing}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span className="hidden sm:inline">Actualiser</span>
+        </Button>
       </div>
 
       {/* Status Overview */}
