@@ -340,6 +340,7 @@ export default function Projects() {
                     "p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02]",
                     segmentColors[project.segment]
                   )}
+                  onClick={() => handleEditClick(project)}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className={cn("rounded-lg p-2", segmentBgColors[project.segment])}>
@@ -353,13 +354,18 @@ export default function Projects() {
                   
                   <h3 className="font-semibold mb-1">{project.name}</h3>
                   {project.deadline && (
-                    <p className="text-xs text-muted-foreground mb-4">
+                    <p className="text-xs text-muted-foreground">
                       Deadline: {new Date(project.deadline).toLocaleDateString('fr-FR')}
+                    </p>
+                  )}
+                  {project.budget && (
+                    <p className="text-xs text-muted-foreground">
+                      Budget: {project.budget.toLocaleString('fr-FR')}€
                     </p>
                   )}
                   
                   {/* Progress bar */}
-                  <div className="space-y-1">
+                  <div className="space-y-1 mt-3">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Progression</span>
                       <span className="font-medium">{project.progress}%</span>
@@ -369,7 +375,11 @@ export default function Projects() {
                       min="0"
                       max="100"
                       value={project.progress}
-                      onChange={(e) => handleProgressUpdate(project.id, parseInt(e.target.value))}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleProgressUpdate(project.id, parseInt(e.target.value));
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                       className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
                     />
                   </div>
@@ -389,6 +399,102 @@ export default function Projects() {
             </GlassCard>
           </div>
         )}
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Modifier le projet</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nom du projet</Label>
+                <Input
+                  id="edit-name"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-segment">Segment</Label>
+                  <Select
+                    value={editFormData.segment}
+                    onValueChange={(value: typeof editFormData.segment) => setEditFormData({ ...editFormData, segment: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {segments.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Statut</Label>
+                  <Select
+                    value={editFormData.status}
+                    onValueChange={(value: typeof editFormData.status) => setEditFormData({ ...editFormData, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="planned">Planifié</SelectItem>
+                      <SelectItem value="in_progress">En cours</SelectItem>
+                      <SelectItem value="completed">Terminé</SelectItem>
+                      <SelectItem value="on_hold">En pause</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-deadline">Deadline</Label>
+                  <Input
+                    id="edit-deadline"
+                    type="date"
+                    value={editFormData.deadline}
+                    onChange={(e) => setEditFormData({ ...editFormData, deadline: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-budget">Budget (€)</Label>
+                  <Input
+                    id="edit-budget"
+                    type="number"
+                    value={editFormData.budget}
+                    onChange={(e) => setEditFormData({ ...editFormData, budget: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Input
+                  id="edit-description"
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  placeholder="Description du projet"
+                />
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={updateProject.isPending}>
+                {updateProject.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Enregistrer les modifications"
+                )}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
