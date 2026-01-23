@@ -52,7 +52,17 @@ const statusConfig = {
 export default function Projects() {
   const { mode } = useMode();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<typeof projects extends (infer T)[] | undefined ? T | null : never>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other",
+    status: "planned" as "planned" | "in_progress" | "completed" | "on_hold",
+    deadline: "",
+    budget: "",
+  });
+  const [editFormData, setEditFormData] = useState({
     name: "",
     description: "",
     segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other",
@@ -94,6 +104,42 @@ export default function Projects() {
       });
     } catch (error) {
       toast.error("Erreur lors de la création");
+    }
+  };
+
+  const handleEditClick = (project: NonNullable<typeof projects>[0]) => {
+    setEditingProject(project);
+    setEditFormData({
+      name: project.name,
+      description: project.description || "",
+      segment: project.segment,
+      status: project.status,
+      deadline: project.deadline || "",
+      budget: project.budget?.toString() || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    
+    try {
+      await updateProject.mutateAsync({
+        id: editingProject.id,
+        name: editFormData.name,
+        description: editFormData.description || null,
+        segment: editFormData.segment,
+        status: editFormData.status,
+        deadline: editFormData.deadline || null,
+        budget: editFormData.budget ? parseFloat(editFormData.budget) : null,
+      });
+      
+      toast.success("Projet mis à jour !");
+      setIsEditDialogOpen(false);
+      setEditingProject(null);
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 

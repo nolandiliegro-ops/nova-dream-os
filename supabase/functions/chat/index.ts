@@ -74,7 +74,7 @@ serve(async (req) => {
         .select("name, progress, deadline, status")
         .eq("user_id", userId)
         .eq("mode", "work")
-        .in("status", ["active", "planned"]);
+        .in("status", ["in_progress", "planned"]);
 
       if (projects) {
         contextData.projectsInProgress = projects.filter(p => p.status === "active").length;
