@@ -48,6 +48,7 @@ export function ProjectTasksWidget({ projectId, projectName, mode }: ProjectTask
         title: newTaskTitle,
         description: null,
         project_id: projectId,
+        mission_id: null,
         priority: "medium",
         status: "todo",
         due_date: null,

@@ -12,6 +12,7 @@ export interface Task {
   id: string;
   user_id: string;
   project_id: string | null;
+  mission_id: string | null;
   title: string;
   description: string | null;
   priority: "low" | "medium" | "high";
@@ -207,5 +208,27 @@ export function useDeleteTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
+  });
+}
+
+export function useTasksByMission(missionId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["tasks", "mission", missionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("mission_id", missionId!)
+        .order("due_date", { ascending: true, nullsFirst: false });
+
+      if (error) throw error;
+      return (data || []).map((task) => ({
+        ...task,
+        subtasks: (Array.isArray(task.subtasks) ? task.subtasks : []) as unknown as Subtask[],
+      })) as Task[];
+    },
+    enabled: !!user && !!missionId,
   });
 }
