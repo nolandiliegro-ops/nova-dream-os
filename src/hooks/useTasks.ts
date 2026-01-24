@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+export interface Subtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface Task {
   id: string;
   user_id: string;
@@ -15,6 +21,7 @@ export interface Task {
   estimated_time: number; // minutes
   time_spent: number; // minutes
   mode: "work" | "personal";
+  subtasks: Subtask[];
   created_at: string;
   updated_at: string;
 }
@@ -38,7 +45,10 @@ export function useTasks(mode?: "work" | "personal") {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Task[];
+      return (data || []).map((task) => ({
+        ...task,
+        subtasks: (Array.isArray(task.subtasks) ? task.subtasks : []) as unknown as Subtask[],
+      })) as Task[];
     },
     enabled: !!user,
   });
@@ -57,7 +67,10 @@ export function useTasksByProject(projectId: string | undefined) {
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      return data as Task[];
+      return (data || []).map((task) => ({
+        ...task,
+        subtasks: (Array.isArray(task.subtasks) ? task.subtasks : []) as unknown as Subtask[],
+      })) as Task[];
     },
     enabled: !!user && !!projectId,
   });
@@ -113,9 +126,15 @@ export function useCreateTask() {
     mutationFn: async (task: Omit<TaskInsert, "user_id">) => {
       if (!user) throw new Error("User not authenticated");
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { subtasks, ...restTask } = task;
       const { data, error } = await supabase
         .from("tasks")
-        .insert({ ...task, user_id: user.id })
+        .insert({ 
+          ...restTask, 
+          user_id: user.id,
+          subtasks: (subtasks || []) as unknown,
+        } as never)
         .select()
         .single();
 
@@ -132,10 +151,14 @@ export function useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Task> & { id: string }) => {
+    mutationFn: async ({ id, subtasks, ...updates }: Partial<Task> & { id: string }) => {
+      const updatePayload = {
+        ...updates,
+        ...(subtasks !== undefined && { subtasks: subtasks as unknown }),
+      };
       const { data, error } = await supabase
         .from("tasks")
-        .update(updates)
+        .update(updatePayload as never)
         .eq("id", id)
         .select()
         .single();

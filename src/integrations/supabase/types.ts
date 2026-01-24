@@ -185,6 +185,7 @@ export type Database = {
           priority: string
           project_id: string | null
           status: string
+          subtasks: Json | null
           time_spent: number
           title: string
           updated_at: string
@@ -201,6 +202,7 @@ export type Database = {
           priority?: string
           project_id?: string | null
           status?: string
+          subtasks?: Json | null
           time_spent?: number
           title: string
           updated_at?: string
@@ -217,6 +219,7 @@ export type Database = {
           priority?: string
           project_id?: string | null
           status?: string
+          subtasks?: Json | null
           time_spent?: number
           title?: string
           updated_at?: string
