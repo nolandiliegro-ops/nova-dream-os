@@ -281,6 +281,50 @@ export function useDeleteMission() {
   });
 }
 
+export function useCreateMissionsFromTemplate() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      missions,
+    }: {
+      projectId: string;
+      missions: { title: string; description: string }[];
+    }) => {
+      if (!user) throw new Error("User not authenticated");
+
+      // Get the next order index
+      const { data: existingMissions } = await supabase
+        .from("missions")
+        .select("order_index")
+        .eq("project_id", projectId)
+        .order("order_index", { ascending: false })
+        .limit(1);
+
+      const startIndex = existingMissions?.[0]?.order_index ?? -1;
+
+      // Prepare batch insert
+      const missionsToInsert = missions.map((m, idx) => ({
+        project_id: projectId,
+        user_id: user.id,
+        title: m.title,
+        description: m.description,
+        status: "pending",
+        order_index: startIndex + 1 + idx,
+        deadline: null,
+      }));
+
+      const { error } = await supabase.from("missions").insert(missionsToInsert as never[]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["missions"] });
+    },
+  });
+}
+
 export function useReorderMissions() {
   const queryClient = useQueryClient();
 
