@@ -13,15 +13,22 @@ import { useMode } from "@/contexts/ModeContext";
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { useUserGoals } from "@/hooks/useUserGoals";
+import { cn } from "@/lib/utils";
 
 export function RevenueWidget() {
   const { mode } = useMode();
   const stats = useTransactionStats(mode);
   const { data: transactions } = useTransactions(mode);
-  const { data: userGoals } = useUserGoals(2026);
+  const { data: userGoals } = useUserGoals(2026, mode);
 
-  // Use dynamic goal from user settings
-  const objectif2026 = userGoals?.annual_revenue_goal ?? 1000000;
+  // Use dynamic goal from user settings - mode-specific defaults
+  const defaultGoal = mode === "work" ? 1000000 : 50000;
+  const objectif2026 = userGoals?.annual_revenue_goal ?? defaultGoal;
+
+  // Mode-specific labels and styling
+  const widgetTitle = mode === "work" ? "Objectif CA 2026" : "Budget Annuel 2026";
+  const widgetSubtitle = mode === "work" ? "Chiffre d'affaires" : "Revenus personnels";
+  const segmentStyle = mode === "work" ? "ecommerce" : "data";
   // Build chart data from real transactions
   const chartData = useMemo(() => {
     if (!transactions || transactions.length === 0) {
@@ -60,14 +67,19 @@ export function RevenueWidget() {
   const progressPercentage = (stats.totalRevenue / objectif2026) * 100;
 
   return (
-    <GlassCard className="col-span-2 row-span-2" segment="ecommerce" glowOnHover>
+    <GlassCard className="col-span-2 row-span-2" segment={segmentStyle} glowOnHover>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-sm text-muted-foreground">Objectif 2026</p>
-          <p className="text-xs text-muted-foreground/60">1M€ de CA</p>
+          <p className="text-sm text-muted-foreground">{widgetTitle}</p>
+          <p className="text-xs text-muted-foreground/60">{widgetSubtitle}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 rounded-full bg-segment-ecommerce/20 px-3 py-1 text-xs font-medium text-segment-ecommerce">
+          <span className={cn(
+            "flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium",
+            mode === "work" 
+              ? "bg-segment-ecommerce/20 text-segment-ecommerce"
+              : "bg-segment-data/20 text-segment-data"
+          )}>
             <Target className="h-3 w-3" />
             {progressPercentage.toFixed(1)}%
           </span>
@@ -87,7 +99,12 @@ export function RevenueWidget() {
       {/* Progress bar */}
       <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted mb-4">
         <div 
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-segment-ecommerce transition-all duration-500"
+          className={cn(
+            "absolute inset-y-0 left-0 transition-all duration-500",
+            mode === "work" 
+              ? "bg-gradient-to-r from-primary to-segment-ecommerce"
+              : "bg-gradient-to-r from-segment-data to-segment-consulting"
+          )}
           style={{ width: `${Math.min(progressPercentage, 100)}%` }}
         />
       </div>
