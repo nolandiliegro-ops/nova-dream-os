@@ -201,7 +201,7 @@
   }
 }
 
-/* Deep Space Ambient Glows */
+/* Deep Space Ambient Glows - WORK Mode (Default: Indigo/Purple/Blue) */
 .ambient-glow {
   position: fixed;
   border-radius: 50%;
@@ -209,12 +209,13 @@
   pointer-events: none;
   opacity: 0.08;
   z-index: 0;
+  transition: background 0.7s ease-in-out;
 }
 
 .ambient-glow-1 {
   width: 600px;
   height: 600px;
-  background: hsl(245 80% 50%);
+  background: hsl(245 80% 50%); /* Indigo */
   top: -200px;
   right: -200px;
   animation: ambient-float 20s ease-in-out infinite;
@@ -223,7 +224,7 @@
 .ambient-glow-2 {
   width: 500px;
   height: 500px;
-  background: hsl(280 70% 45%);
+  background: hsl(280 70% 45%); /* Deep Purple */
   bottom: -150px;
   left: -150px;
   animation: ambient-float 20s ease-in-out infinite;
@@ -233,11 +234,24 @@
 .ambient-glow-3 {
   width: 400px;
   height: 400px;
-  background: hsl(200 80% 40%);
+  background: hsl(200 80% 40%); /* Blue */
   top: 50%;
   left: 30%;
   animation: ambient-float 20s ease-in-out infinite;
   animation-delay: -14s;
+}
+
+/* PERSONAL Mode Glows - Teal/Emerald/Cyan palette */
+.mode-personal .ambient-glow-1 {
+  background: hsl(160 70% 45%); /* Teal */
+}
+
+.mode-personal .ambient-glow-2 {
+  background: hsl(145 65% 40%); /* Emerald */
+}
+
+.mode-personal .ambient-glow-3 {
+  background: hsl(185 75% 45%); /* Cyan */
 }
 
 @keyframes ambient-float {

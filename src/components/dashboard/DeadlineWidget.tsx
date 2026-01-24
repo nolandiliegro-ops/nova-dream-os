@@ -1,6 +1,7 @@
 import { GlassCard } from "./GlassCard";
 import { useEffect, useState } from "react";
 import { useNextDeadline } from "@/hooks/useProjects";
+import { useMode } from "@/contexts/ModeContext";
 import { Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,8 @@ interface TimeLeft {
 }
 
 export function DeadlineWidget() {
-  const nextDeadlineProject = useNextDeadline();
+  const { mode } = useMode();
+  const nextDeadlineProject = useNextDeadline(mode);
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
 
   useEffect(() => {

@@ -1,18 +1,25 @@
 import { GlassCard } from "./GlassCard";
 import { useTransactionStats } from "@/hooks/useTransactions";
+import { useUserGoals } from "@/hooks/useUserGoals";
 import { useMode } from "@/contexts/ModeContext";
-import { Target, TrendingUp, Calendar } from "lucide-react";
+import { Target, TrendingUp, Calendar, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Goal100kWidget() {
   const { mode } = useMode();
   const stats = useTransactionStats(mode);
+  const { data: userGoals } = useUserGoals(2026, mode);
 
-  const goal = 100000;
+  // Dynamic goal based on mode
+  const goal = userGoals?.annual_revenue_goal ?? (mode === "work" ? 100000 : 50000);
   const current = stats.totalRevenue;
   const percentage = Math.min((current / goal) * 100, 100);
   const remaining = Math.max(0, goal - current);
   const isCompleted = current >= goal;
+
+  // Contextual labels
+  const title = mode === "work" ? "Objectif CA" : "Objectif Perso";
+  const subtitle = mode === "work" ? "Chiffre d'affaires annuel" : "Budget épargne/loisirs";
 
   // Calculate months remaining until end of 2026
   const now = new Date();
@@ -33,21 +40,33 @@ export function Goal100kWidget() {
   };
 
   return (
-    <GlassCard className="h-full" segment="tech" glowOnHover>
+    <GlassCard className="h-full" segment={mode === "work" ? "tech" : "data"} glowOnHover>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-segment-tech/20">
-            <Target className="h-4 w-4 text-segment-tech" />
+          <div className={cn(
+            "p-2 rounded-lg",
+            mode === "work" ? "bg-segment-tech/20" : "bg-segment-data/20"
+          )}>
+            {mode === "work" ? (
+              <Target className="h-4 w-4 text-segment-tech" />
+            ) : (
+              <Heart className="h-4 w-4 text-segment-data" />
+            )}
           </div>
-          <span className="text-sm font-medium">Objectif 100k</span>
+          <div>
+            <span className="text-sm font-medium">{title}</span>
+            <p className="text-[10px] text-muted-foreground">{subtitle}</p>
+          </div>
         </div>
         <span
           className={cn(
             "text-xs font-bold px-2 py-1 rounded-full",
             isCompleted
               ? "bg-primary/20 text-primary"
-              : "bg-segment-tech/20 text-segment-tech"
+              : mode === "work" 
+                ? "bg-segment-tech/20 text-segment-tech"
+                : "bg-segment-data/20 text-segment-data"
           )}
         >
           {percentage.toFixed(1)}%
@@ -72,7 +91,9 @@ export function Goal100kWidget() {
               "h-full rounded-full transition-all duration-1000 ease-out",
               isCompleted
                 ? "bg-gradient-to-r from-primary to-primary/70"
-                : "bg-gradient-to-r from-segment-tech to-primary"
+                : mode === "work"
+                  ? "bg-gradient-to-r from-segment-tech to-primary"
+                  : "bg-gradient-to-r from-segment-data to-primary"
             )}
             style={{ width: `${percentage}%` }}
           />
@@ -108,11 +129,14 @@ export function Goal100kWidget() {
       {/* Motivation message */}
       {isCompleted ? (
         <p className="text-center text-xs text-primary mt-3 font-medium">
-          🎉 Premier palier atteint ! Cap sur le million !
+          {mode === "work" ? "🎉 Objectif atteint ! Cap sur le million !" : "🎉 Objectif atteint ! Bravo !"}
         </p>
       ) : percentage >= 75 ? (
-        <p className="text-center text-xs text-segment-tech mt-3">
-          🔥 Plus que {formatCurrency(remaining)} pour le palier !
+        <p className={cn(
+          "text-center text-xs mt-3",
+          mode === "work" ? "text-segment-tech" : "text-segment-data"
+        )}>
+          🔥 Plus que {formatCurrency(remaining)} !
         </p>
       ) : percentage >= 50 ? (
         <p className="text-center text-xs text-muted-foreground mt-3">

@@ -67,7 +67,7 @@ function NotificationItem({
 export function DashboardLayout({ children, hideSidebar = false, headerContent }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const { mode } = useMode();
-  const { urgentProjects } = useUrgentDeadlines(48);
+  const { urgentProjects } = useUrgentDeadlines(48, mode);
   const { data: transactions } = useTransactions(mode);
 
   // Get sales from last 24 hours
@@ -98,8 +98,11 @@ export function DashboardLayout({ children, hideSidebar = false, headerContent }
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full relative overflow-hidden">
-        {/* Deep Space Ambient Glows */}
+      <div className={cn(
+        "flex min-h-screen w-full relative overflow-hidden transition-all duration-700",
+        mode === "personal" && "mode-personal"
+      )}>
+        {/* Deep Space Ambient Glows - Colors change based on mode */}
         <div className="ambient-glow ambient-glow-1" />
         <div className="ambient-glow ambient-glow-2" />
         <div className="ambient-glow ambient-glow-3" />
