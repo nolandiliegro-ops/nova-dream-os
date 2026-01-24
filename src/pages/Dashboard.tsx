@@ -6,6 +6,7 @@ import { TasksWidget } from "@/components/dashboard/TasksWidget";
 import { ToolsWidget } from "@/components/dashboard/ToolsWidget";
 import { Goal100kWidget } from "@/components/dashboard/Goal100kWidget";
 import { MissionFocusWidget } from "@/components/dashboard/MissionFocusWidget";
+import { StrategicCalendarWidget } from "@/components/dashboard/StrategicCalendarWidget";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
 import { useLoginNotifications } from "@/hooks/useLoginNotifications";
@@ -68,13 +69,18 @@ export default function Dashboard() {
             <ToolsWidget />
           </div>
 
+          {/* Strategic Calendar Widget - Takes 2 columns */}
+          <div className="md:col-span-2">
+            <StrategicCalendarWidget />
+          </div>
+
           {/* Mission Focus Widget */}
-          <div className="md:col-span-1">
+          <div className="md:col-span-2">
             <MissionFocusWidget />
           </div>
 
-          {/* Tasks Widget - Takes 3 columns */}
-          <div className="md:col-span-2 lg:col-span-3">
+          {/* Tasks Widget - Takes 4 columns full width */}
+          <div className="md:col-span-2 lg:col-span-4">
             <TasksWidget />
           </div>
         </div>
