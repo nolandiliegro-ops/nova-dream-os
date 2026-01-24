@@ -5,7 +5,7 @@ import { useMode } from "@/contexts/ModeContext";
 import { useMissionsWithDeadlines } from "@/hooks/useMissions";
 import { CalendarDays, ChevronRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, isSameDay, differenceInHours, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,17 @@ const segmentColors: Record<string, string> = {
   other: "bg-muted/20 text-muted-foreground border-muted/30",
 };
 
+// Check if deadline is urgent (< 48h)
+const isDeadlineUrgent = (deadline: string): boolean => {
+  const deadlineDate = new Date(deadline);
+  const hoursUntilDeadline = differenceInHours(deadlineDate, new Date());
+  return hoursUntilDeadline >= 0 && hoursUntilDeadline <= 48;
+};
+
+const isDeadlinePast = (deadline: string): boolean => {
+  return isPast(new Date(deadline));
+};
+
 export function StrategicCalendarWidget() {
   const { mode } = useMode();
   const navigate = useNavigate();
@@ -36,6 +47,23 @@ export function StrategicCalendarWidget() {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   
   const { data: missions, isLoading } = useMissionsWithDeadlines(mode);
+
+  // Get dates that have mission deadlines with urgency info
+  const deadlineInfo = useMemo(() => {
+    if (!missions) return new Map<string, { hasDeadline: boolean; isUrgent: boolean; isPast: boolean }>();
+    const info = new Map<string, { hasDeadline: boolean; isUrgent: boolean; isPast: boolean }>();
+    missions
+      .filter(m => m.deadline)
+      .forEach(m => {
+        const dateStr = m.deadline!;
+        info.set(dateStr, {
+          hasDeadline: true,
+          isUrgent: isDeadlineUrgent(dateStr),
+          isPast: isDeadlinePast(dateStr),
+        });
+      });
+    return info;
+  }, [missions]);
 
   // Get dates that have mission deadlines
   const datesWithDeadlines = useMemo(() => {
@@ -119,11 +147,24 @@ export function StrategicCalendarWidget() {
                 DayContent: ({ date }) => {
                   const dateStr = format(date, "yyyy-MM-dd");
                   const hasDeadline = datesWithDeadlines.has(dateStr);
+                  const info = deadlineInfo.get(dateStr);
+                  const isUrgent = info?.isUrgent || false;
+                  const isPastDate = info?.isPast || false;
+                  
                   return (
                     <div className="relative flex items-center justify-center w-full h-full">
                       <span>{date.getDate()}</span>
                       {hasDeadline && (
-                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.8)]" />
+                        <span 
+                          className={cn(
+                            "absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full",
+                            isPastDate 
+                              ? "bg-destructive shadow-[0_0_8px_hsl(var(--destructive)/0.8)] animate-pulse"
+                              : isUrgent
+                                ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse"
+                                : "bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.8)]"
+                          )} 
+                        />
                       )}
                     </div>
                   );
