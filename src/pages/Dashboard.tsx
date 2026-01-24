@@ -7,82 +7,197 @@ import { ToolsWidget } from "@/components/dashboard/ToolsWidget";
 import { Goal100kWidget } from "@/components/dashboard/Goal100kWidget";
 import { MissionFocusWidget } from "@/components/dashboard/MissionFocusWidget";
 import { StrategicCalendarWidget } from "@/components/dashboard/StrategicCalendarWidget";
+import { DraggableWidgetWrapper } from "@/components/dashboard/DraggableWidgetWrapper";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
 import { useLoginNotifications } from "@/hooks/useLoginNotifications";
+import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { LayoutGrid, RotateCcw, Check } from "lucide-react";
+
+// Widget configuration registry
+interface WidgetConfig {
+  id: string;
+  component: React.ComponentType;
+  colSpan: {
+    mobile: number;
+    tablet: number;
+    desktop: number;
+  };
+  rowSpan?: number;
+  label: string;
+}
+
+const WIDGET_REGISTRY: Record<string, WidgetConfig> = {
+  revenue: {
+    id: "revenue",
+    component: RevenueWidget,
+    colSpan: { mobile: 1, tablet: 2, desktop: 2 },
+    rowSpan: 2,
+    label: "Revenus",
+  },
+  projects: {
+    id: "projects",
+    component: ActiveProjectsWidget,
+    colSpan: { mobile: 1, tablet: 1, desktop: 1 },
+    label: "Projets",
+  },
+  deadlines: {
+    id: "deadlines",
+    component: DeadlineWidget,
+    colSpan: { mobile: 1, tablet: 1, desktop: 1 },
+    label: "Deadlines",
+  },
+  goal: {
+    id: "goal",
+    component: Goal100kWidget,
+    colSpan: { mobile: 1, tablet: 1, desktop: 1 },
+    label: "Objectif 100k",
+  },
+  tools: {
+    id: "tools",
+    component: ToolsWidget,
+    colSpan: { mobile: 1, tablet: 1, desktop: 1 },
+    label: "Outils",
+  },
+  calendar: {
+    id: "calendar",
+    component: StrategicCalendarWidget,
+    colSpan: { mobile: 1, tablet: 2, desktop: 2 },
+    label: "Calendrier",
+  },
+  focus: {
+    id: "focus",
+    component: MissionFocusWidget,
+    colSpan: { mobile: 1, tablet: 2, desktop: 2 },
+    label: "Focus Missions",
+  },
+  tasks: {
+    id: "tasks",
+    component: TasksWidget,
+    colSpan: { mobile: 1, tablet: 2, desktop: 4 },
+    label: "Tâches",
+  },
+};
+
+// Helper to get Tailwind col-span classes (explicit for purging)
+const getColSpanClass = (config: WidgetConfig): string => {
+  const key = `${config.colSpan.mobile}-${config.colSpan.tablet}-${config.colSpan.desktop}`;
+  
+  const colSpanMap: Record<string, string> = {
+    "1-1-1": "col-span-1",
+    "1-1-2": "col-span-1 lg:col-span-2",
+    "1-2-2": "col-span-1 md:col-span-2 lg:col-span-2",
+    "1-2-4": "col-span-1 md:col-span-2 lg:col-span-4",
+  };
+
+  return colSpanMap[key] || "col-span-1";
+};
+
+// Helper to get Tailwind row-span classes
+const getRowSpanClass = (config: WidgetConfig): string => {
+  if (config.rowSpan === 2) return "md:row-span-2";
+  return "";
+};
 
 export default function Dashboard() {
   const { mode } = useMode();
-  
+  const { widgetOrder, isEditMode, toggleEditMode, moveWidget, resetOrder } = useDashboardLayout();
+
   // Enable realtime notifications for new transactions
   useRealtimeTransactions();
-  
+
   // Show login notifications (deadlines, missing transactions, milestones)
   useLoginNotifications();
 
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        {/* Welcome message */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold md:text-3xl">
-            Bonjour, <span className="text-gradient">Bienvenue</span> 👋
-          </h1>
-          <p className="text-muted-foreground">
-            {mode === "work"
-              ? "Voici l'aperçu de tes activités business"
-              : "Voici l'aperçu de ta vie personnelle"}
-          </p>
+        {/* Welcome message + Edit Mode Controls */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold md:text-3xl">
+              Bonjour, <span className="text-gradient">Bienvenue</span> 👋
+            </h1>
+            <p className="text-muted-foreground">
+              {mode === "work"
+                ? "Voici l'aperçu de tes activités business"
+                : "Voici l'aperçu de ta vie personnelle"}
+            </p>
+          </div>
+
+          {/* Layout Controls */}
+          <div className="flex items-center gap-2">
+            {isEditMode && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetOrder}
+                className="text-muted-foreground hover:text-foreground rounded-2xl"
+              >
+                <RotateCcw className="h-4 w-4 mr-1.5" />
+                Reset
+              </Button>
+            )}
+            <Button
+              variant={isEditMode ? "default" : "outline"}
+              size="sm"
+              onClick={toggleEditMode}
+              className={cn(
+                "rounded-2xl transition-all duration-300",
+                isEditMode && "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+              )}
+            >
+              {isEditMode ? (
+                <>
+                  <Check className="h-4 w-4 mr-1.5" />
+                  Terminer
+                </>
+              ) : (
+                <>
+                  <LayoutGrid className="h-4 w-4 mr-1.5" />
+                  Modifier Layout
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
-        {/* Bento Grid */}
+        {/* Bento Grid - Dynamic Rendering */}
         <div
           className={cn(
             "grid gap-4 transition-all duration-500",
             "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
-            "auto-rows-auto"
+            "auto-rows-auto",
+            isEditMode && "gap-6 pt-4"
           )}
         >
-          {/* Revenue Chart - Takes 2 columns and 2 rows */}
-          <div className="md:col-span-2 md:row-span-2">
-            <RevenueWidget />
-          </div>
+          {widgetOrder.map((widgetId, index) => {
+            const config = WIDGET_REGISTRY[widgetId];
+            if (!config) return null;
 
-          {/* Active Projects */}
-          <div className="md:col-span-1">
-            <ActiveProjectsWidget />
-          </div>
+            const Component = config.component;
+            const colSpanClass = getColSpanClass(config);
+            const rowSpanClass = getRowSpanClass(config);
 
-          {/* Deadline Countdown */}
-          <div className="md:col-span-1">
-            <DeadlineWidget />
-          </div>
-
-          {/* Goal 100k Widget */}
-          <div className="md:col-span-1">
-            <Goal100kWidget />
-          </div>
-
-          {/* Tools Widget */}
-          <div className="md:col-span-1">
-            <ToolsWidget />
-          </div>
-
-          {/* Strategic Calendar Widget - Takes 2 columns */}
-          <div className="md:col-span-2">
-            <StrategicCalendarWidget />
-          </div>
-
-          {/* Mission Focus Widget */}
-          <div className="md:col-span-2">
-            <MissionFocusWidget />
-          </div>
-
-          {/* Tasks Widget - Takes 4 columns full width */}
-          <div className="md:col-span-2 lg:col-span-4">
-            <TasksWidget />
-          </div>
+            return (
+              <DraggableWidgetWrapper
+                key={widgetId}
+                widgetId={widgetId}
+                label={config.label}
+                colSpanClass={colSpanClass}
+                rowSpanClass={rowSpanClass}
+                isEditMode={isEditMode}
+                isFirst={index === 0}
+                isLast={index === widgetOrder.length - 1}
+                onMoveUp={() => moveWidget(widgetId, "up")}
+                onMoveDown={() => moveWidget(widgetId, "down")}
+              >
+                <Component />
+              </DraggableWidgetWrapper>
+            );
+          })}
         </div>
       </div>
     </DashboardLayout>
