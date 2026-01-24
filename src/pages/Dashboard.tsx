@@ -5,6 +5,7 @@ import { DeadlineWidget } from "@/components/dashboard/DeadlineWidget";
 import { TasksWidget } from "@/components/dashboard/TasksWidget";
 import { ToolsWidget } from "@/components/dashboard/ToolsWidget";
 import { Goal100kWidget } from "@/components/dashboard/Goal100kWidget";
+import { MissionFocusWidget } from "@/components/dashboard/MissionFocusWidget";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
 import { useLoginNotifications } from "@/hooks/useLoginNotifications";
@@ -67,7 +68,12 @@ export default function Dashboard() {
             <ToolsWidget />
           </div>
 
-          {/* Tasks Widget - Takes 2 columns */}
+          {/* Mission Focus Widget */}
+          <div className="md:col-span-1">
+            <MissionFocusWidget />
+          </div>
+
+          {/* Tasks Widget - Takes 3 columns */}
           <div className="md:col-span-2 lg:col-span-3">
             <TasksWidget />
           </div>

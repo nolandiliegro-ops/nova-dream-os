@@ -22,6 +22,12 @@ export interface MissionWithProgress extends Mission {
   tasks: Task[];
 }
 
+export interface FocusMission extends MissionWithProgress {
+  projectName: string;
+  projectSegment: string;
+  inProgressTasksCount: number;
+}
+
 export type MissionInsert = Omit<Mission, "id" | "created_at" | "updated_at">;
 
 export function useMissions(projectId: string | undefined) {
@@ -40,6 +46,82 @@ export function useMissions(projectId: string | undefined) {
       return data as Mission[];
     },
     enabled: !!user && !!projectId,
+  });
+}
+
+export function useGlobalFocusMissions(mode: "work" | "personal") {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["missions", "global-focus", mode],
+    queryFn: async () => {
+      // 1. Fetch all projects for this mode
+      const { data: projects, error: projectsError } = await supabase
+        .from("projects")
+        .select("id, name, segment")
+        .eq("mode", mode);
+
+      if (projectsError) throw projectsError;
+      if (!projects || projects.length === 0) return [];
+
+      const projectIds = projects.map(p => p.id);
+
+      // 2. Fetch all missions for these projects
+      const { data: missions, error: missionsError } = await supabase
+        .from("missions")
+        .select("*")
+        .in("project_id", projectIds);
+
+      if (missionsError) throw missionsError;
+      if (!missions || missions.length === 0) return [];
+
+      const missionIds = missions.map(m => m.id);
+
+      // 3. Fetch all tasks linked to these missions
+      const { data: tasks, error: tasksError } = await supabase
+        .from("tasks")
+        .select("id, mission_id, status")
+        .in("mission_id", missionIds);
+
+      if (tasksError) throw tasksError;
+
+      // 4. Calculate progress and filter active missions
+      const focusMissions: FocusMission[] = missions
+        .map((mission) => {
+          const project = projects.find(p => p.id === mission.project_id);
+          const missionTasks = (tasks || []).filter(t => t.mission_id === mission.id);
+          const completedTasks = missionTasks.filter(t => t.status === "completed").length;
+          const inProgressTasks = missionTasks.filter(t => t.status === "in_progress").length;
+          const totalTasks = missionTasks.length;
+          const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+          return {
+            ...mission,
+            status: mission.status as "pending" | "in_progress" | "completed",
+            progress,
+            completedTasks,
+            totalTasks,
+            tasks: [],
+            projectName: project?.name || "Projet inconnu",
+            projectSegment: project?.segment || "other",
+            inProgressTasksCount: inProgressTasks,
+          };
+        })
+        // Filter: missions with progress between 1-99% OR with in_progress tasks
+        .filter((m) => (m.progress > 0 && m.progress < 100) || m.inProgressTasksCount > 0)
+        // Sort by in_progress tasks count (desc), then by progress (desc)
+        .sort((a, b) => {
+          if (b.inProgressTasksCount !== a.inProgressTasksCount) {
+            return b.inProgressTasksCount - a.inProgressTasksCount;
+          }
+          return b.progress - a.progress;
+        })
+        // Take top 3
+        .slice(0, 3);
+
+      return focusMissions;
+    },
+    enabled: !!user,
   });
 }
 
