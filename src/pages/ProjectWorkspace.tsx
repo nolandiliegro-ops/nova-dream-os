@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useProject } from "@/hooks/useProjects";
 import { Button } from "@/components/ui/button";
@@ -60,12 +60,16 @@ interface WidgetVisibility {
 export default function ProjectWorkspace() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: project, isLoading } = useProject(id);
+  
+  // Check for deep-link tab parameter
+  const tabParam = searchParams.get("tab");
   
   // Widget visibility state with localStorage persistence
   const [visibleWidgets, setVisibleWidgets] = useState<WidgetVisibility>(() => {
     const saved = localStorage.getItem(`project-widgets-${id}`);
-    return saved ? JSON.parse(saved) : {
+    const defaultVisibility = {
       info: true,
       roadmap: true,
       tasks: true,
@@ -73,6 +77,14 @@ export default function ProjectWorkspace() {
       documents: true,
       timeline: true,
     };
+    
+    // If tab=roadmap, ensure roadmap is visible
+    if (tabParam === "roadmap") {
+      const parsed = saved ? JSON.parse(saved) : defaultVisibility;
+      return { ...parsed, roadmap: true };
+    }
+    
+    return saved ? JSON.parse(saved) : defaultVisibility;
   });
 
   // Focus mode state
@@ -84,6 +96,16 @@ export default function ProjectWorkspace() {
       localStorage.setItem(`project-widgets-${id}`, JSON.stringify(visibleWidgets));
     }
   }, [visibleWidgets, id]);
+  
+  // Scroll to roadmap widget when deep-linked
+  useEffect(() => {
+    if (tabParam === "roadmap") {
+      const roadmapElement = document.getElementById("roadmap-widget");
+      if (roadmapElement) {
+        roadmapElement.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }, [tabParam, project]);
 
   // Keyboard shortcuts for Focus Mode
   const toggleFocusMode = useCallback(() => {
@@ -271,7 +293,7 @@ export default function ProjectWorkspace() {
 
           {/* Roadmap Widget - hidden in focus mode */}
           {visibleWidgets.roadmap && !isFocusMode && (
-            <div className="md:col-span-1">
+            <div id="roadmap-widget" className="md:col-span-1">
               <ProjectRoadmapWidget 
                 projectId={project.id}
                 mode={project.mode as "work" | "personal"}
