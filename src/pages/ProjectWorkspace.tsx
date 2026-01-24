@@ -15,7 +15,8 @@ import {
   EyeOff,
   Focus,
   X,
-  Clock
+  Clock,
+  Map
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProjectInfoWidget } from "@/components/project-workspace/ProjectInfoWidget";
@@ -23,6 +24,7 @@ import { ProjectTasksWidget } from "@/components/project-workspace/ProjectTasksW
 import { ProjectFinancesWidget } from "@/components/project-workspace/ProjectFinancesWidget";
 import { ProjectDocumentsWidget } from "@/components/project-workspace/ProjectDocumentsWidget";
 import { ProjectTimelineWidget } from "@/components/project-workspace/ProjectTimelineWidget";
+import { ProjectRoadmapWidget } from "@/components/project-workspace/ProjectRoadmapWidget";
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
@@ -48,6 +50,7 @@ const segmentColors: Record<string, string> = {
 
 interface WidgetVisibility {
   info: boolean;
+  roadmap: boolean;
   tasks: boolean;
   finances: boolean;
   documents: boolean;
@@ -64,6 +67,7 @@ export default function ProjectWorkspace() {
     const saved = localStorage.getItem(`project-widgets-${id}`);
     return saved ? JSON.parse(saved) : {
       info: true,
+      roadmap: true,
       tasks: true,
       finances: true,
       documents: true,
@@ -137,6 +141,7 @@ export default function ProjectWorkspace() {
 
   const widgetButtons = [
     { key: "info" as const, icon: Info, label: "Info" },
+    { key: "roadmap" as const, icon: Map, label: "Roadmap" },
     { key: "tasks" as const, icon: ListTodo, label: "Tâches" },
     { key: "finances" as const, icon: DollarSign, label: "Finances" },
     { key: "documents" as const, icon: FileText, label: "Documents" },
@@ -261,6 +266,16 @@ export default function ProjectWorkspace() {
           {visibleWidgets.info && !isFocusMode && (
             <div className="md:col-span-1">
               <ProjectInfoWidget project={project} />
+            </div>
+          )}
+
+          {/* Roadmap Widget - hidden in focus mode */}
+          {visibleWidgets.roadmap && !isFocusMode && (
+            <div className="md:col-span-1">
+              <ProjectRoadmapWidget 
+                projectId={project.id}
+                mode={project.mode as "work" | "personal"}
+              />
             </div>
           )}
 

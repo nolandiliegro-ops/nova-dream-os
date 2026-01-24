@@ -95,6 +95,50 @@ export type Database = {
         }
         Relationships: []
       }
+      missions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_index: number
+          project_id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          project_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          project_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           content: string | null
@@ -205,6 +249,7 @@ export type Database = {
           due_date: string | null
           estimated_time: number
           id: string
+          mission_id: string | null
           mode: string
           priority: string
           project_id: string | null
@@ -222,6 +267,7 @@ export type Database = {
           due_date?: string | null
           estimated_time?: number
           id?: string
+          mission_id?: string | null
           mode?: string
           priority?: string
           project_id?: string | null
@@ -239,6 +285,7 @@ export type Database = {
           due_date?: string | null
           estimated_time?: number
           id?: string
+          mission_id?: string | null
           mode?: string
           priority?: string
           project_id?: string | null
@@ -250,6 +297,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_project_id_fkey"
             columns: ["project_id"]

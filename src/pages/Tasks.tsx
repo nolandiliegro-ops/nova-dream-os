@@ -13,6 +13,7 @@ import { Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, Tr
 import { cn } from "@/lib/utils";
 import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, useDeleteTask, Task, Subtask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
+import { useMissions } from "@/hooks/useMissions";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -51,6 +52,7 @@ export default function Tasks() {
     description: "",
     priority: "medium" as "low" | "medium" | "high",
     project_id: "",
+    mission_id: "",
     due_date: "",
     estimated_time: "60",
   });
@@ -59,6 +61,7 @@ export default function Tasks() {
     description: "",
     priority: "medium" as "low" | "medium" | "high",
     project_id: "",
+    mission_id: "",
     due_date: "",
     estimated_time: "60",
     time_spent: "0",
@@ -68,6 +71,8 @@ export default function Tasks() {
 
   const { data: tasks, isLoading } = useTasks(mode);
   const { data: projects } = useProjects(mode);
+  const { data: missions } = useMissions(formData.project_id || undefined);
+  const { data: editMissions } = useMissions(editFormData.project_id || undefined);
   const stats = useTaskStats(mode);
   const createTask = useCreateTask();
   const toggleComplete = useToggleTaskComplete();
@@ -84,6 +89,7 @@ export default function Tasks() {
         priority: formData.priority,
         status: "todo",
         project_id: formData.project_id || null,
+        mission_id: formData.mission_id || null,
         due_date: formData.due_date || null,
         completed_at: null,
         estimated_time: parseInt(formData.estimated_time) || 60,
@@ -99,6 +105,7 @@ export default function Tasks() {
         description: "",
         priority: "medium",
         project_id: "",
+        mission_id: "",
         due_date: "",
         estimated_time: "60",
       });
@@ -114,6 +121,7 @@ export default function Tasks() {
       description: task.description || "",
       priority: task.priority as "low" | "medium" | "high",
       project_id: task.project_id || "",
+      mission_id: task.mission_id || "",
       due_date: task.due_date || "",
       estimated_time: task.estimated_time.toString(),
       time_spent: task.time_spent.toString(),
@@ -134,6 +142,7 @@ export default function Tasks() {
         description: editFormData.description || null,
         priority: editFormData.priority,
         project_id: editFormData.project_id || null,
+        mission_id: editFormData.mission_id || null,
         due_date: editFormData.due_date || null,
         estimated_time: parseInt(editFormData.estimated_time) || 60,
         time_spent: parseInt(editFormData.time_spent) || 0,
@@ -267,7 +276,11 @@ export default function Tasks() {
                     <Label htmlFor="project">Projet</Label>
                     <Select
                       value={formData.project_id || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, project_id: value === "none" ? "" : value })}
+                      onValueChange={(value) => setFormData({ 
+                        ...formData, 
+                        project_id: value === "none" ? "" : value,
+                        mission_id: "" // Reset mission when project changes
+                      })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Aucun projet" />
@@ -290,6 +303,30 @@ export default function Tasks() {
                     />
                   </div>
                 </div>
+
+                {/* Mission selector - only show if project is selected */}
+                {formData.project_id && (
+                  <div className="space-y-2">
+                    <Label htmlFor="mission">Mission (optionnel)</Label>
+                    <Select
+                      value={formData.mission_id || "none"}
+                      onValueChange={(value) => setFormData({ 
+                        ...formData, 
+                        mission_id: value === "none" ? "" : value 
+                      })}
+                    >
+                      <SelectTrigger className="rounded-2xl">
+                        <SelectValue placeholder="Aucune mission" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Aucune mission</SelectItem>
+                        {missions?.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
@@ -497,7 +534,11 @@ export default function Tasks() {
                   <Label htmlFor="edit-project">Projet</Label>
                   <Select
                     value={editFormData.project_id || "none"}
-                    onValueChange={(value) => setEditFormData({ ...editFormData, project_id: value === "none" ? "" : value })}
+                    onValueChange={(value) => setEditFormData({ 
+                      ...editFormData, 
+                      project_id: value === "none" ? "" : value,
+                      mission_id: "" // Reset mission when project changes
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Aucun projet" />
@@ -511,6 +552,30 @@ export default function Tasks() {
                   </Select>
                 </div>
               </div>
+
+              {/* Mission selector in edit form */}
+              {editFormData.project_id && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-mission">Mission</Label>
+                  <Select
+                    value={editFormData.mission_id || "none"}
+                    onValueChange={(value) => setEditFormData({ 
+                      ...editFormData, 
+                      mission_id: value === "none" ? "" : value 
+                    })}
+                  >
+                    <SelectTrigger className="rounded-2xl">
+                      <SelectValue placeholder="Aucune mission" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Aucune mission</SelectItem>
+                      {editMissions?.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
