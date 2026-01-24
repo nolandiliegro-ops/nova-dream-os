@@ -44,10 +44,7 @@ export const useDocuments = (mode: string, segment?: string | null) => {
 
       const { data, error } = await query;
 
-      if (error) {
-        console.error("Error fetching documents:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       return data as Document[];
     },
@@ -72,10 +69,7 @@ export const useDocumentStats = (mode: string) => {
         .eq("user_id", user.id)
         .eq("mode", mode);
 
-      if (error) {
-        console.error("Error fetching document stats:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       const stats: DocumentStats = {
         totalDocuments: data.length,
@@ -97,7 +91,7 @@ export const useDocumentStats = (mode: string) => {
 // Trigger background analysis for a document
 const triggerBackgroundAnalysis = async (documentId: string, userId: string) => {
   try {
-    const response = await fetch(
+    await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-document`,
       {
         method: "POST",
@@ -108,14 +102,8 @@ const triggerBackgroundAnalysis = async (documentId: string, userId: string) => 
         body: JSON.stringify({ documentId, userId }),
       }
     );
-
-    if (response.ok) {
-      console.log("Background analysis completed for document:", documentId);
-    } else {
-      console.warn("Background analysis failed:", await response.text());
-    }
-  } catch (error) {
-    console.warn("Background analysis error:", error);
+  } catch {
+    // Silent fail for background analysis
   }
 };
 
@@ -159,10 +147,7 @@ export const useUploadDocument = () => {
 
         clearInterval(progressInterval);
 
-        if (uploadError) {
-          console.error("Storage upload error:", uploadError);
-          throw uploadError;
-        }
+        if (uploadError) throw uploadError;
 
         onProgress?.(95);
 
@@ -209,8 +194,7 @@ export const useUploadDocument = () => {
       queryClient.invalidateQueries({ queryKey: ["latest-document"] });
       toast.success("Document uploadé avec succès !");
     },
-    onError: (error) => {
-      console.error("Upload error:", error);
+    onError: () => {
       toast.error("Erreur lors de l'upload du document");
     },
   });
@@ -222,15 +206,10 @@ export const useDeleteDocument = () => {
 
   return useMutation({
     mutationFn: async (document: Document) => {
-      // Delete from storage first
-      const { error: storageError } = await supabase.storage
+      // Delete from storage first (continue even if it fails)
+      await supabase.storage
         .from("documents")
         .remove([document.file_path]);
-
-      if (storageError) {
-        console.error("Storage delete error:", storageError);
-        // Continue to delete from DB even if storage delete fails
-      }
 
       // Delete from database
       const { error: dbError } = await supabase
@@ -247,8 +226,7 @@ export const useDeleteDocument = () => {
       queryClient.invalidateQueries({ queryKey: ["document-stats"] });
       toast.success("Document supprimé");
     },
-    onError: (error) => {
-      console.error("Delete error:", error);
+    onError: () => {
       toast.error("Erreur lors de la suppression");
     },
   });
@@ -269,8 +247,7 @@ export const useDownloadDocument = () => {
       window.open(data.signedUrl, "_blank");
       return data.signedUrl;
     },
-    onError: (error) => {
-      console.error("Download error:", error);
+    onError: () => {
       toast.error("Erreur lors du téléchargement");
     },
   });

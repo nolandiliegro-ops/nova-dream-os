@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save } from "lucide-react";
+import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save, Download } from "lucide-react";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useUserGoals, useUpdateUserGoals } from "@/hooks/useUserGoals";
 import { useApiConfig } from "@/hooks/useApiConfigs";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Generate a random token
 function generateToken(): string {
@@ -85,6 +86,48 @@ export default function Settings() {
       toast.success("Objectifs 2026 mis à jour ! 🎯");
     } catch (error) {
       toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
+  const handleExportData = async () => {
+    if (!user) return;
+    
+    const loadingToast = toast.loading("Préparation de l'export...");
+    
+    try {
+      const [projectsRes, tasksRes, transactionsRes, documentsRes, profileRes, goalsRes] = await Promise.all([
+        supabase.from("projects").select("*").eq("user_id", user.id),
+        supabase.from("tasks").select("*").eq("user_id", user.id),
+        supabase.from("transactions").select("*").eq("user_id", user.id),
+        supabase.from("documents").select("id, name, category, segment, description, created_at").eq("user_id", user.id),
+        supabase.from("profiles").select("*").eq("user_id", user.id).single(),
+        supabase.from("user_goals").select("*").eq("user_id", user.id),
+      ]);
+
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        version: "Nova Dream 1.0",
+        profile: profileRes.data,
+        goals: goalsRes.data,
+        projects: projectsRes.data || [],
+        tasks: tasksRes.data || [],
+        transactions: transactionsRes.data || [],
+        documents: documentsRes.data || [],
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `nova-dream-export-${new Date().toISOString().split("T")[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      toast.dismiss(loadingToast);
+      toast.success("Export terminé ! 📦");
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error("Erreur lors de l'export");
     }
   };
 
@@ -282,9 +325,15 @@ export default function Settings() {
           </div>
           
           <div className="space-y-4">
-            <Button variant="outline" className="w-full sm:w-auto">
-              Changer le mot de passe
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" className="gap-2">
+                Changer le mot de passe
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={handleExportData}>
+                <Download className="h-4 w-4" />
+                Exporter mes données (JSON)
+              </Button>
+            </div>
             
             <div className="pt-4 border-t border-border/50">
               <Button 

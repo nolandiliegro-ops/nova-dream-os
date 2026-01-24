@@ -173,7 +173,6 @@ export default function Assistant() {
     try {
       await streamChat(newMessages);
     } catch (error) {
-      console.error("Chat error:", error);
       toast.error(error instanceof Error ? error.message : "Erreur de connexion à Nova");
       // Remove the failed assistant message if any
       setMessages((prev) => {
