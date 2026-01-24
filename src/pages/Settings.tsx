@@ -10,6 +10,8 @@ import { User, Bell, Shield, Palette, Target, LogOut, Loader2, Save, Download } 
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useUserGoals, useUpdateUserGoals } from "@/hooks/useUserGoals";
 import { useApiConfig } from "@/hooks/useApiConfigs";
+import { useMode } from "@/contexts/ModeContext";
+import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,8 +28,9 @@ function generateToken(): string {
 
 export default function Settings() {
   const { user, signOut } = useAuth();
+  const { mode } = useMode();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: goals, isLoading: goalsLoading } = useUserGoals(2026);
+  const { data: goals, isLoading: goalsLoading } = useUserGoals(2026, mode);
   const { data: webhookConfig, isLoading: webhookLoading } = useApiConfig("n8n_webhook");
   const updateProfile = useUpdateProfile();
   const updateGoals = useUpdateUserGoals();
@@ -78,12 +81,13 @@ export default function Settings() {
     try {
       await updateGoals.mutateAsync({
         year: 2026,
+        mode,
         goals: {
           annual_revenue_goal: revenueGoal,
           annual_projects_goal: projectsGoal,
         },
       });
-      toast.success("Objectifs 2026 mis à jour ! 🎯");
+      toast.success(`Objectifs ${mode === "work" ? "Work" : "Perso"} 2026 mis à jour ! 🎯`);
     } catch (error) {
       toast.error("Erreur lors de la sauvegarde");
     }
@@ -192,19 +196,26 @@ export default function Settings() {
 
         {/* Objectifs Section */}
         <GlassCard className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-segment-ecommerce/20">
-              <Target className="h-5 w-5 text-segment-ecommerce" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${mode === "work" ? "bg-segment-ecommerce/20" : "bg-segment-data/20"}`}>
+                <Target className={`h-5 w-5 ${mode === "work" ? "text-segment-ecommerce" : "text-segment-data"}`} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Objectifs 2026</h3>
+                <p className="text-xs text-muted-foreground">Configure tes objectifs annuels</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold">Objectifs 2026</h3>
-              <p className="text-xs text-muted-foreground">Configure tes objectifs annuels</p>
-            </div>
+            <Badge variant={mode === "work" ? "default" : "secondary"} className="font-trading">
+              {mode === "work" ? "MODE WORK" : "MODE PERSO"}
+            </Badge>
           </div>
           
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="revenue-goal">Objectif CA annuel (€)</Label>
+              <Label htmlFor="revenue-goal">
+                {mode === "work" ? "Objectif CA annuel (€)" : "Objectif épargne/loisirs (€)"}
+              </Label>
               <Input 
                 id="revenue-goal" 
                 type="number" 

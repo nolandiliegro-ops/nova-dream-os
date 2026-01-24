@@ -155,8 +155,8 @@ export function useDeleteProject() {
 }
 
 // Hook to get projects with urgent deadlines (within specified hours)
-export function useUrgentDeadlines(hoursThreshold: number = 48) {
-  const { data: projects } = useProjects();
+export function useUrgentDeadlines(hoursThreshold: number = 48, mode?: "work" | "personal") {
+  const { data: projects } = useProjects(mode);
 
   const urgentProjects = useMemo(() => {
     if (!projects) return [];
@@ -185,8 +185,8 @@ export function useUrgentDeadlines(hoursThreshold: number = 48) {
 }
 
 // Hook to get the next deadline project (closest deadline)
-export function useNextDeadline() {
-  const { data: projects } = useProjects();
+export function useNextDeadline(mode?: "work" | "personal") {
+  const { data: projects } = useProjects(mode);
 
   const nextDeadlineProject = useMemo(() => {
     if (!projects) return null;

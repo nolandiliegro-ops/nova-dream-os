@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY = "nova-dashboard-widget-order";
-
 export const DEFAULT_WIDGET_ORDER = [
   "revenue",
   "projects", 
@@ -13,7 +11,12 @@ export const DEFAULT_WIDGET_ORDER = [
   "tasks",
 ];
 
-export function useDashboardLayout() {
+const getStorageKey = (mode: "work" | "personal") => 
+  `nova-dashboard-layout-${mode}`;
+
+export function useDashboardLayout(mode: "work" | "personal" = "work") {
+  const STORAGE_KEY = getStorageKey(mode);
+  
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -33,10 +36,29 @@ export function useDashboardLayout() {
 
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // Re-sync widget order when mode changes
+  useEffect(() => {
+    const key = getStorageKey(mode);
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const allPresent = DEFAULT_WIDGET_ORDER.every((id) => parsed.includes(id));
+        if (allPresent && parsed.length === DEFAULT_WIDGET_ORDER.length) {
+          setWidgetOrder(parsed);
+          return;
+        }
+      }
+    } catch {
+      // Invalid JSON
+    }
+    setWidgetOrder(DEFAULT_WIDGET_ORDER);
+  }, [mode]);
+
   // Persist to localStorage on change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(widgetOrder));
-  }, [widgetOrder]);
+  }, [widgetOrder, STORAGE_KEY]);
 
   const moveWidget = useCallback((widgetId: string, direction: "up" | "down") => {
     setWidgetOrder((prev) => {

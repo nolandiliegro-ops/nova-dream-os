@@ -103,7 +103,7 @@ const getRowSpanClass = (config: WidgetConfig): string => {
 
 export default function Dashboard() {
   const { mode } = useMode();
-  const { widgetOrder, isEditMode, toggleEditMode, moveWidget, resetOrder } = useDashboardLayout();
+  const { widgetOrder, isEditMode, toggleEditMode, moveWidget, resetOrder } = useDashboardLayout(mode);
 
   // Enable realtime notifications for new transactions
   useRealtimeTransactions();

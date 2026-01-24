@@ -378,6 +378,7 @@ export type Database = {
           annual_revenue_goal: number
           created_at: string
           id: string
+          mode: string
           updated_at: string
           user_id: string
           year: number
@@ -387,6 +388,7 @@ export type Database = {
           annual_revenue_goal?: number
           created_at?: string
           id?: string
+          mode?: string
           updated_at?: string
           user_id: string
           year?: number
@@ -396,6 +398,7 @@ export type Database = {
           annual_revenue_goal?: number
           created_at?: string
           id?: string
+          mode?: string
           updated_at?: string
           user_id?: string
           year?: number
