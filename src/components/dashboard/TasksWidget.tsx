@@ -1,8 +1,9 @@
 import { GlassCard } from "./GlassCard";
-import { Circle, ChevronRight, CheckCircle2, Loader2 } from "lucide-react";
+import { Circle, ChevronRight, CheckCircle2, Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTasks, useToggleTaskComplete } from "@/hooks/useTasks";
 import { useMode } from "@/contexts/ModeContext";
+import { useTaskTimer } from "@/contexts/TaskTimerContext";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -16,6 +17,7 @@ export function TasksWidget() {
   const { mode } = useMode();
   const { data: tasks, isLoading } = useTasks(mode);
   const toggleComplete = useToggleTaskComplete();
+  const { startTimer, state: timerState } = useTaskTimer();
 
   // Get only incomplete tasks, sorted by priority and due date
   const urgentTasks = tasks
@@ -81,7 +83,7 @@ export function TasksWidget() {
             <div
               key={task.id}
               className={cn(
-                "flex items-start gap-3 rounded-xl border-l-2 bg-secondary/30 p-3 transition-all hover:bg-secondary/50",
+                "flex items-start gap-3 rounded-xl border-l-2 bg-secondary/30 p-3 transition-all hover:bg-secondary/50 group",
                 priorityBorderColors[task.priority]
               )}
             >
@@ -95,6 +97,16 @@ export function TasksWidget() {
                 <p className="text-sm font-medium truncate">{task.title}</p>
                 <p className="text-xs text-muted-foreground">{formatDueDate(task.due_date)}</p>
               </div>
+              <button
+                onClick={() => startTimer(task.id, task.title)}
+                className={cn(
+                  "opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-primary/20",
+                  timerState.taskId === task.id && "opacity-100 text-primary"
+                )}
+                title="Démarrer le timer"
+              >
+                <Play className="h-4 w-4" />
+              </button>
             </div>
           ))}
         </div>

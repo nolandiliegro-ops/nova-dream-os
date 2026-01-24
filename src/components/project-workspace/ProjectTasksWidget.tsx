@@ -3,17 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ListTodo, 
   Plus, 
   ExternalLink,
   Loader2,
   CheckCircle2,
-  Circle
+  Circle,
+  Play
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTasksByProject, useCreateTask, useToggleTaskComplete } from "@/hooks/useTasks";
+import { useTaskTimer } from "@/contexts/TaskTimerContext";
 import { toast } from "sonner";
 
 interface ProjectTasksWidgetProps {
@@ -33,6 +34,7 @@ export function ProjectTasksWidget({ projectId, projectName, mode }: ProjectTask
   const { data: tasks, isLoading } = useTasksByProject(projectId);
   const createTask = useCreateTask();
   const toggleComplete = useToggleTaskComplete();
+  const { startTimer, state: timerState } = useTaskTimer();
   
   const [isAdding, setIsAdding] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -156,6 +158,18 @@ export function ProjectTasksWidget({ projectId, projectName, mode }: ProjectTask
               )}>
                 {task.title}
               </span>
+              {task.status !== "completed" && (
+                <button
+                  onClick={() => startTimer(task.id, task.title)}
+                  className={cn(
+                    "opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-primary/20",
+                    timerState.taskId === task.id && "opacity-100 text-primary"
+                  )}
+                  title="Démarrer le timer"
+                >
+                  <Play className="h-4 w-4" />
+                </button>
+              )}
               {task.due_date && (
                 <span className="text-xs text-muted-foreground">
                   {new Date(task.due_date).toLocaleDateString('fr-FR', { 

@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ModeProvider } from "@/contexts/ModeContext";
+import { TaskTimerProvider } from "@/contexts/TaskTimerContext";
+import { FloatingTaskTimer } from "@/components/timer/FloatingTaskTimer";
 import Index from "./pages/Index";
 import Finances from "./pages/Finances";
 import Projects from "./pages/Projects";
@@ -23,23 +25,26 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <AuthProvider>
         <ModeProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/finances" element={<Finances />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/projects/:id" element={<ProjectWorkspace />} />
-                <Route path="/tasks" element={<Tasks />} />
-                <Route path="/assistant" element={<Assistant />} />
-                <Route path="/documents" element={<Documents />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+          <TaskTimerProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/finances" element={<Finances />} />
+                  <Route path="/projects" element={<Projects />} />
+                  <Route path="/projects/:id" element={<ProjectWorkspace />} />
+                  <Route path="/tasks" element={<Tasks />} />
+                  <Route path="/assistant" element={<Assistant />} />
+                  <Route path="/documents" element={<Documents />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+              <FloatingTaskTimer />
+            </TooltipProvider>
+          </TaskTimerProvider>
         </ModeProvider>
       </AuthProvider>
     </ThemeProvider>
