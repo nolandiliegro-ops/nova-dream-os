@@ -11,6 +11,7 @@ export interface Mission {
   description: string | null;
   status: "pending" | "in_progress" | "completed";
   order_index: number;
+  deadline: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -112,8 +113,8 @@ export function useGlobalFocusMissions(mode: "work" | "personal") {
             inProgressTasksCount: inProgressTasks,
           };
         })
-        // Filter: missions with progress between 1-99% OR with in_progress tasks
-        .filter((m) => (m.progress > 0 && m.progress < 100) || m.inProgressTasksCount > 0)
+        // Filter: ALL non-completed missions (even at 0%)
+        .filter((m) => m.status !== "completed" && m.progress < 100)
         // Sort by in_progress tasks count (desc), then by progress (desc)
         .sort((a, b) => {
           if (b.inProgressTasksCount !== a.inProgressTasksCount) {
@@ -121,8 +122,8 @@ export function useGlobalFocusMissions(mode: "work" | "personal") {
           }
           return b.progress - a.progress;
         })
-        // Take top 3
-        .slice(0, 3);
+        // Take top 5 for better visibility
+        .slice(0, 5);
 
       return focusMissions;
     },
@@ -293,6 +294,84 @@ export function useReorderMissions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["missions"] });
+    },
+  });
+}
+
+// Hook to fetch missions with deadlines for calendar view
+export function useMissionsWithDeadlines(mode: "work" | "personal") {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["missions", "withDeadlines", mode],
+    staleTime: STALE_TIME_1_MIN,
+    queryFn: async () => {
+      // Fetch all projects for this mode
+      const { data: projects, error: projectsError } = await supabase
+        .from("projects")
+        .select("id, name, segment")
+        .eq("mode", mode);
+
+      if (projectsError) throw projectsError;
+      if (!projects || projects.length === 0) return [];
+
+      const projectIds = projects.map((p) => p.id);
+      const projectMap = new Map(projects.map((p) => [p.id, p]));
+
+      // Fetch all missions for these projects
+      const { data: missions, error: missionsError } = await supabase
+        .from("missions")
+        .select("*")
+        .in("project_id", projectIds)
+        .neq("status", "completed");
+
+      if (missionsError) throw missionsError;
+      if (!missions) return [];
+
+      return missions.map((mission) => {
+        const project = projectMap.get(mission.project_id);
+        return {
+          ...mission,
+          status: mission.status as "pending" | "in_progress" | "completed",
+          projectName: project?.name || "Projet inconnu",
+          projectSegment: project?.segment || "other",
+        };
+      });
+    },
+    enabled: !!user,
+  });
+}
+
+// Hook to complete a mission and all its tasks
+export function useCompleteMission() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ missionId, complete }: { missionId: string; complete: boolean }) => {
+      // Update mission status
+      const { error: missionError } = await supabase
+        .from("missions")
+        .update({ status: complete ? "completed" : "pending" })
+        .eq("id", missionId);
+
+      if (missionError) throw missionError;
+
+      // If completing, mark all linked tasks as completed
+      if (complete) {
+        const { error: tasksError } = await supabase
+          .from("tasks")
+          .update({ 
+            status: "completed", 
+            completed_at: new Date().toISOString() 
+          })
+          .eq("mission_id", missionId);
+
+        if (tasksError) throw tasksError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["missions"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }

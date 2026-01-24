@@ -98,6 +98,7 @@ export type Database = {
       missions: {
         Row: {
           created_at: string
+          deadline: string | null
           description: string | null
           id: string
           order_index: number
@@ -109,6 +110,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deadline?: string | null
           description?: string | null
           id?: string
           order_index?: number
@@ -120,6 +122,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deadline?: string | null
           description?: string | null
           id?: string
           order_index?: number
