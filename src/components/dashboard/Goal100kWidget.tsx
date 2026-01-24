@@ -56,7 +56,7 @@ export function Goal100kWidget() {
 
       {/* Current Amount */}
       <div className="text-center mb-4">
-        <p className="text-3xl font-bold tabular-nums">
+        <p className="text-4xl font-trading">
           {formatCurrency(current)}
         </p>
         <p className="text-xs text-muted-foreground">

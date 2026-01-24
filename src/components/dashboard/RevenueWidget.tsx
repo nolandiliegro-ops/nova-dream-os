@@ -78,7 +78,7 @@ export function RevenueWidget() {
       </div>
 
       <div className="mb-2">
-        <span className="text-3xl font-bold">{stats.totalRevenue.toLocaleString('fr-FR')}€</span>
+        <span className="text-4xl font-trading">{stats.totalRevenue.toLocaleString('fr-FR')}€</span>
         <span className="ml-2 text-sm text-muted-foreground">
           / {objectif2026.toLocaleString('fr-FR')}€
         </span>

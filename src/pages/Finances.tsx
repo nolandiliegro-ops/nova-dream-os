@@ -250,7 +250,7 @@ export default function Finances() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold">{stats.totalRevenue.toLocaleString('fr-FR')}€</p>
+              <p className="text-4xl font-trading">{stats.totalRevenue.toLocaleString('fr-FR')}€</p>
               <p className="text-sm text-muted-foreground">{progressPercentage.toFixed(1)}% atteint</p>
             </div>
           </div>
@@ -281,7 +281,7 @@ export default function Finances() {
               <span className="text-sm text-muted-foreground">Revenus ce mois</span>
               <ArrowUpRight className="h-4 w-4 text-segment-ecommerce" />
             </div>
-            <p className="mt-2 text-2xl font-bold">{stats.monthlyRevenue.toLocaleString('fr-FR')}€</p>
+            <p className="mt-2 text-3xl font-trading">{stats.monthlyRevenue.toLocaleString('fr-FR')}€</p>
           </GlassCard>
           
           <GlassCard className="p-4">
@@ -289,7 +289,7 @@ export default function Finances() {
               <span className="text-sm text-muted-foreground">Dépenses ce mois</span>
               <ArrowDownRight className="h-4 w-4 text-destructive" />
             </div>
-            <p className="mt-2 text-2xl font-bold">{stats.monthlyExpenses.toLocaleString('fr-FR')}€</p>
+            <p className="mt-2 text-3xl font-trading">{stats.monthlyExpenses.toLocaleString('fr-FR')}€</p>
           </GlassCard>
           
           <GlassCard className="p-4">
@@ -297,7 +297,7 @@ export default function Finances() {
               <span className="text-sm text-muted-foreground">Profit net total</span>
               <TrendingUp className="h-4 w-4 text-segment-ecommerce" />
             </div>
-            <p className="mt-2 text-2xl font-bold">{stats.netProfit.toLocaleString('fr-FR')}€</p>
+            <p className="mt-2 text-3xl font-trading">{stats.netProfit.toLocaleString('fr-FR')}€</p>
           </GlassCard>
           
           <GlassCard className="p-4">
@@ -305,7 +305,7 @@ export default function Finances() {
               <span className="text-sm text-muted-foreground">Total revenus</span>
               <Target className="h-4 w-4 text-primary" />
             </div>
-            <p className="mt-2 text-2xl font-bold">{stats.totalRevenue.toLocaleString('fr-FR')}€</p>
+            <p className="mt-2 text-3xl font-trading">{stats.totalRevenue.toLocaleString('fr-FR')}€</p>
           </GlassCard>
         </div>
 

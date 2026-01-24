@@ -111,7 +111,7 @@ export function ProjectFinancesWidget({ projectId, segment, budget }: ProjectFin
                 <span>Profit projet (lié)</span>
               </div>
               <p className={cn(
-                "text-xl font-bold",
+                "text-2xl font-trading",
                 projectProfit >= 0 ? "text-segment-ecommerce" : "text-destructive"
               )}>
                 {projectProfit >= 0 ? "+" : ""}{projectProfit.toLocaleString('fr-FR')}€
@@ -148,7 +148,7 @@ export function ProjectFinancesWidget({ projectId, segment, budget }: ProjectFin
           )}>
             <span className="text-xs text-muted-foreground">Profit segment</span>
             <p className={cn(
-              "text-xl font-bold",
+              "text-2xl font-trading",
               segmentProfit >= 0 ? "text-segment-ecommerce" : "text-destructive"
             )}>
               {segmentProfit >= 0 ? "+" : ""}{segmentProfit.toLocaleString('fr-FR')}€

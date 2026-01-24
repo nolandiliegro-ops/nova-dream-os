@@ -48,10 +48,11 @@
     --segment-data: 187 85% 53%;
     --segment-tech: 330 81% 60%;
 
-    /* Glassmorphism */
-    --glass-bg: 0 0% 100% / 0.1;
-    --glass-border: 0 0% 100% / 0.2;
-    --glass-blur: 20px;
+    /* Glassmorphism Elite */
+    --glass-bg: 0 0% 100% / 0.08;
+    --glass-border: 0 0% 100% / 0.15;
+    --glass-shine: 0 0% 100% / 0.08;
+    --glass-blur: 24px;
 
     /* Sidebar */
     --sidebar-background: 222 47% 8%;
@@ -93,9 +94,10 @@
     --input: 217 33% 17%;
     --ring: 142 71% 45%;
 
-    /* Glassmorphism Dark */
-    --glass-bg: 0 0% 100% / 0.05;
-    --glass-border: 0 0% 100% / 0.1;
+    /* Glassmorphism Dark Elite */
+    --glass-bg: 0 0% 100% / 0.04;
+    --glass-border: 0 0% 100% / 0.08;
+    --glass-shine: 0 0% 100% / 0.04;
 
     /* Sidebar Dark */
     --sidebar-background: 222 47% 5%;
@@ -120,11 +122,33 @@
 }
 
 @layer components {
-  /* Glassmorphism Card */
+  /* Glassmorphism Card - Elite Edition */
   .glass-card {
-    @apply rounded-2xl border backdrop-blur-xl;
+    @apply rounded-2xl border backdrop-blur-2xl relative overflow-hidden;
     background: hsl(var(--glass-bg));
     border-color: hsl(var(--glass-border));
+    box-shadow: 
+      0 8px 32px -8px hsl(0 0% 0% / 0.25),
+      inset 0 1px 0 0 hsl(var(--glass-shine));
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--glass-shine)) 50%, transparent 100%);
+    pointer-events: none;
+  }
+
+  /* Trading Terminal Font for Financial Figures */
+  .font-trading {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-feature-settings: 'tnum' on, 'lnum' on;
   }
 
   /* Segment color utilities */
