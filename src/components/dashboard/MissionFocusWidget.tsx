@@ -9,9 +9,10 @@ import { Target, ChevronRight, Loader2, Plus, CalendarDays } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { AddGlobalMissionDialog } from "./AddGlobalMissionDialog";
-import { format } from "date-fns";
+import { format, differenceInHours, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 
 const segmentLabels: Record<string, string> = {
   ecommerce: "E-commerce",
@@ -33,6 +34,47 @@ const segmentColors: Record<string, string> = {
   other: "bg-muted/20 text-muted-foreground border-muted/30",
 };
 
+// Check if deadline is urgent (< 48h)
+const isDeadlineUrgent = (deadline: string | null): boolean => {
+  if (!deadline) return false;
+  const deadlineDate = new Date(deadline);
+  const hoursUntilDeadline = differenceInHours(deadlineDate, new Date());
+  return hoursUntilDeadline >= 0 && hoursUntilDeadline <= 48;
+};
+
+const isDeadlinePast = (deadline: string | null): boolean => {
+  if (!deadline) return false;
+  return isPast(new Date(deadline));
+};
+
+// Celebration confetti animation
+const triggerCelebration = () => {
+  const duration = 2000;
+  const end = Date.now() + duration;
+
+  const frame = () => {
+    confetti({
+      particleCount: 3,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.7 },
+      colors: ['#a855f7', '#3b82f6', '#22c55e'],
+    });
+    confetti({
+      particleCount: 3,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.7 },
+      colors: ['#a855f7', '#3b82f6', '#22c55e'],
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  };
+  frame();
+};
+
 export function MissionFocusWidget() {
   const { mode } = useMode();
   const { data: focusMissions, isLoading } = useGlobalFocusMissions(mode);
@@ -48,7 +90,8 @@ export function MissionFocusWidget() {
     try {
       await completeMission.mutateAsync({ missionId, complete: checked });
       if (checked) {
-        toast.success("Mission terminée ! Toutes les tâches ont été complétées.");
+        triggerCelebration();
+        toast.success("🎉 Mission terminée ! Toutes les tâches ont été complétées.");
       }
     } catch {
       toast.error("Erreur lors de la mise à jour");
@@ -131,9 +174,16 @@ export function MissionFocusWidget() {
 
                   {/* Deadline if present */}
                   {mission.deadline && (
-                    <div className="flex items-center gap-1 mb-2">
-                      <CalendarDays className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-trading text-muted-foreground">
+                    <div className={cn(
+                      "flex items-center gap-1 mb-2 px-2 py-0.5 rounded-full w-fit",
+                      isDeadlinePast(mission.deadline)
+                        ? "bg-destructive/20 text-destructive animate-pulse"
+                        : isDeadlineUrgent(mission.deadline)
+                          ? "bg-amber-500/20 text-amber-400 animate-pulse"
+                          : "bg-muted/50 text-muted-foreground"
+                    )}>
+                      <CalendarDays className="h-3 w-3" />
+                      <span className="text-xs font-trading">
                         {format(new Date(mission.deadline), "d MMM yyyy", { locale: fr })}
                       </span>
                     </div>

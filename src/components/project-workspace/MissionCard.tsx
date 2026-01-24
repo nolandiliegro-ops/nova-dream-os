@@ -2,6 +2,8 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   CheckCircle2, 
   Circle, 
@@ -9,11 +11,16 @@ import {
   ChevronDown, 
   ChevronUp,
   Trash2,
-  Loader2
+  Loader2,
+  CalendarDays,
+  Pencil
 } from "lucide-react";
-import { MissionWithProgress, useDeleteMission, useUpdateMission } from "@/hooks/useMissions";
+import { MissionWithProgress, useDeleteMission, useUpdateMission, useCompleteMission } from "@/hooks/useMissions";
 import { MissionTaskList } from "./MissionTaskList";
 import { toast } from "sonner";
+import { format, differenceInHours, isPast } from "date-fns";
+import { fr } from "date-fns/locale";
+import confetti from "canvas-confetti";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,11 +59,54 @@ const statusConfig = {
   },
 };
 
+// Celebration confetti animation
+const triggerCelebration = () => {
+  const duration = 2000;
+  const end = Date.now() + duration;
+
+  const frame = () => {
+    confetti({
+      particleCount: 3,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.7 },
+      colors: ['#a855f7', '#3b82f6', '#22c55e'],
+    });
+    confetti({
+      particleCount: 3,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.7 },
+      colors: ['#a855f7', '#3b82f6', '#22c55e'],
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  };
+  frame();
+};
+
+// Check if deadline is urgent (< 48h)
+const isDeadlineUrgent = (deadline: string | null): boolean => {
+  if (!deadline) return false;
+  const deadlineDate = new Date(deadline);
+  const hoursUntilDeadline = differenceInHours(deadlineDate, new Date());
+  return hoursUntilDeadline >= 0 && hoursUntilDeadline <= 48;
+};
+
+const isDeadlinePast = (deadline: string | null): boolean => {
+  if (!deadline) return false;
+  return isPast(new Date(deadline));
+};
+
 export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deadlinePopoverOpen, setDeadlinePopoverOpen] = useState(false);
   const deleteMission = useDeleteMission();
   const updateMission = useUpdateMission();
+  const completeMission = useCompleteMission();
 
   // Auto-update status based on progress
   const effectiveStatus = mission.progress === 100 
@@ -66,6 +116,8 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       : mission.status;
 
   const config = statusConfig[effectiveStatus];
+  const isUrgent = isDeadlineUrgent(mission.deadline);
+  const isPastDeadline = isDeadlinePast(mission.deadline);
 
   const handleDelete = async () => {
     try {
@@ -77,10 +129,24 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
     }
   };
 
-  const handleStatusToggle = async () => {
-    const newStatus = effectiveStatus === "completed" ? "pending" : "completed";
+  const handleComplete = async () => {
     try {
-      await updateMission.mutateAsync({ id: mission.id, status: newStatus });
+      await completeMission.mutateAsync({ missionId: mission.id, complete: true });
+      triggerCelebration();
+      toast.success("🎉 Mission terminée ! Toutes les tâches ont été complétées.");
+    } catch {
+      toast.error("Erreur lors de la complétion");
+    }
+  };
+
+  const handleDeadlineChange = async (date: Date | undefined) => {
+    try {
+      await updateMission.mutateAsync({ 
+        id: mission.id, 
+        deadline: date ? format(date, "yyyy-MM-dd") : null 
+      });
+      setDeadlinePopoverOpen(false);
+      toast.success("Deadline mise à jour");
     } catch {
       toast.error("Erreur lors de la mise à jour");
     }
@@ -99,11 +165,78 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       </div>
 
       {/* Card */}
-      <div className="glass-card rounded-2xl p-4 transition-all hover:bg-muted/20">
+      <div className="glass-card rounded-2xl p-4 transition-all hover:bg-muted/20 group">
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
-            <h4 className="font-trading text-base truncate">{mission.title}</h4>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-trading text-base truncate">{mission.title}</h4>
+              {/* Deadline badge */}
+              {mission.deadline && (
+                <Popover open={deadlinePopoverOpen} onOpenChange={setDeadlinePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-trading transition-all",
+                        "hover:scale-105 cursor-pointer",
+                        isPastDeadline 
+                          ? "bg-destructive/20 text-destructive animate-pulse"
+                          : isUrgent 
+                            ? "bg-amber-500/20 text-amber-400 animate-pulse"
+                            : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      <CalendarDays className="h-3 w-3" />
+                      {format(new Date(mission.deadline), "d MMM", { locale: fr })}
+                      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={mission.deadline ? new Date(mission.deadline) : undefined}
+                      onSelect={handleDeadlineChange}
+                      locale={fr}
+                      className="rounded-2xl"
+                    />
+                    {mission.deadline && (
+                      <div className="p-2 border-t">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs text-muted-foreground"
+                          onClick={() => handleDeadlineChange(undefined)}
+                        >
+                          Retirer la deadline
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              )}
+              {/* Add deadline if none */}
+              {!mission.deadline && (
+                <Popover open={deadlinePopoverOpen} onOpenChange={setDeadlinePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted/50 text-muted-foreground hover:bg-muted transition-all"
+                    >
+                      <CalendarDays className="h-3 w-3" />
+                      <span>Ajouter</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={undefined}
+                      onSelect={handleDeadlineChange}
+                      locale={fr}
+                      className="rounded-2xl"
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
             {mission.description && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                 {mission.description}
@@ -118,6 +251,18 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
             )}>
               {config.label}
             </span>
+            {effectiveStatus !== "completed" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-segment-ecommerce hover:bg-segment-ecommerce/20"
+                onClick={handleComplete}
+                disabled={completeMission.isPending}
+                title="Marquer comme terminée"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
