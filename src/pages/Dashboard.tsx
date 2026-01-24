@@ -14,6 +14,7 @@ import { useLoginNotifications } from "@/hooks/useLoginNotifications";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { LayoutGrid, RotateCcw, Check } from "lucide-react";
 
 // Widget configuration registry
@@ -117,9 +118,22 @@ export default function Dashboard() {
         {/* Welcome message + Edit Mode Controls */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold md:text-3xl">
-              Bonjour, <span className="text-gradient">Bienvenue</span> 👋
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold md:text-3xl">
+                Bonjour, <span className="text-gradient">Bienvenue</span> 👋
+              </h1>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs font-semibold px-3 py-1 rounded-full border-2 animate-pulse",
+                  mode === "work" 
+                    ? "border-segment-tiktok text-segment-tiktok bg-segment-tiktok/10"
+                    : "border-segment-data text-segment-data bg-segment-data/10"
+                )}
+              >
+                {mode === "work" ? "BUSINESS" : "PERSO"}
+              </Badge>
+            </div>
             <p className="text-muted-foreground">
               {mode === "work"
                 ? "Voici l'aperçu de tes activités business"
