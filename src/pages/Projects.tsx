@@ -116,6 +116,13 @@ export default function Projects() {
     if (urlSegment) setSegmentFilter(urlSegment);
   }, [searchParams]);
 
+  // Reset filter when mode changes to avoid stuck on non-existent segment
+  useEffect(() => {
+    setSegmentFilter(null);
+    setFormData((prev) => ({ ...prev, segment: mode === "work" ? "ecommerce" : "hobby" }));
+    setEditFormData((prev) => ({ ...prev, segment: mode === "work" ? "ecommerce" : "hobby" }));
+  }, [mode]);
+
   const { data: projects, isLoading } = useProjects(mode);
   const stats = useProjectStats(mode);
   const createProject = useCreateProject();
