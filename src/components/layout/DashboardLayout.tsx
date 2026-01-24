@@ -2,7 +2,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { ModeSwitch } from "./ModeSwitch";
 import { ThemeToggle } from "./ThemeToggle";
-import { Bell, AlertTriangle, DollarSign, Trophy, Clock } from "lucide-react";
+import { CeoScratchpad } from "./CeoScratchpad";
+import { Bell, AlertTriangle, DollarSign, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -145,7 +146,12 @@ export function DashboardLayout({ children, hideSidebar = false, headerContent }
                       </SheetTitle>
                     </SheetHeader>
 
-                    <div className="mt-6 space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
+                    {/* CEO Scratchpad */}
+                    <div className="mt-4">
+                      <CeoScratchpad />
+                    </div>
+
+                    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
                       {/* Milestone */}
                       {reachedMilestone && (
                         <NotificationItem
