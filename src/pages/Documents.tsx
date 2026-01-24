@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { useMode } from "@/contexts/ModeContext";
@@ -105,6 +105,12 @@ export default function Documents() {
   const [deleteDoc, setDeleteDoc] = useState<Document | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState<string>(defaultSegment);
+
+  // Reset filter and selection when mode changes
+  useEffect(() => {
+    setActiveSegment(null);
+    setSelectedSegment(mode === "work" ? "ecommerce" : "wellness");
+  }, [mode]);
 
   // Queries & mutations
   const { data: documents = [], isLoading } = useDocuments(mode, activeSegment);
