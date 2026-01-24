@@ -10,22 +10,32 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 const segmentLabels: Record<string, string> = {
+  // Work
   ecommerce: "E-commerce",
   tiktok: "TikTok",
   consulting: "Consulting",
   oracle: "Oracle",
   data: "Les Enquêtes",
   tech: "Dream App",
+  // Personal
+  hobby: "Hobbies",
+  wellness: "Bien-être",
+  travel: "Voyages",
   other: "Autre",
 };
 
 const segmentColors: Record<string, string> = {
+  // Work
   ecommerce: "bg-segment-ecommerce/20 text-segment-ecommerce border-segment-ecommerce/30",
   tiktok: "bg-segment-tiktok/20 text-segment-tiktok border-segment-tiktok/30",
   consulting: "bg-segment-consulting/20 text-segment-consulting border-segment-consulting/30",
   oracle: "bg-segment-oracle/20 text-segment-oracle border-segment-oracle/30",
   data: "bg-segment-data/20 text-segment-data border-segment-data/30",
   tech: "bg-segment-tech/20 text-segment-tech border-segment-tech/30",
+  // Personal
+  hobby: "bg-segment-oracle/20 text-segment-oracle border-segment-oracle/30",
+  wellness: "bg-segment-data/20 text-segment-data border-segment-data/30",
+  travel: "bg-segment-consulting/20 text-segment-consulting border-segment-consulting/30",
   other: "bg-muted/20 text-muted-foreground border-muted/30",
 };
 

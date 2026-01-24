@@ -50,20 +50,34 @@ import {
   type Document,
 } from "@/hooks/useDocuments";
 
-const segments = [
+// Work document folders
+const WORK_SEGMENTS = [
   { id: "ecommerce", label: "E-commerce", color: "segment-ecommerce" },
   { id: "tiktok", label: "TikTok", color: "segment-tiktok" },
   { id: "consulting", label: "Consulting", color: "segment-consulting" },
   { id: "oracle", label: "Oracle", color: "segment-oracle" },
-  { id: "Autre", label: "Autre", color: "muted-foreground" },
+  { id: "other", label: "Autre", color: "muted-foreground" },
+];
+
+// Personal document folders
+const PERSONAL_SEGMENTS = [
+  { id: "wellness", label: "Santé", color: "segment-data" },
+  { id: "hobby", label: "Loisirs", color: "segment-oracle" },
+  { id: "travel", label: "Voyages", color: "segment-consulting" },
+  { id: "other", label: "Autre", color: "muted-foreground" },
 ];
 
 const segmentColors: Record<string, string> = {
+  // Work
   ecommerce: "border-l-segment-ecommerce",
   tiktok: "border-l-segment-tiktok",
   consulting: "border-l-segment-consulting",
   oracle: "border-l-segment-oracle",
-  Autre: "border-l-muted-foreground",
+  // Personal
+  wellness: "border-l-segment-data",
+  hobby: "border-l-segment-oracle",
+  travel: "border-l-segment-consulting",
+  other: "border-l-muted-foreground",
 };
 
 const getDocumentIcon = (mimeType: string) => {
@@ -79,6 +93,10 @@ export default function Documents() {
   const { mode } = useMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Dynamic segments based on mode
+  const segments = mode === "work" ? WORK_SEGMENTS : PERSONAL_SEGMENTS;
+  const defaultSegment = mode === "work" ? "ecommerce" : "wellness";
+
   // State
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -86,7 +104,7 @@ export default function Documents() {
   const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
   const [deleteDoc, setDeleteDoc] = useState<Document | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [selectedSegment, setSelectedSegment] = useState<string>("Autre");
+  const [selectedSegment, setSelectedSegment] = useState<string>(defaultSegment);
 
   // Queries & mutations
   const { data: documents = [], isLoading } = useDocuments(mode, activeSegment);

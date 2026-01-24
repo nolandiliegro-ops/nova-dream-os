@@ -23,7 +23,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const segments = [
+// Work segments
+const WORK_SEGMENTS = [
   { value: "ecommerce", label: "E-commerce" },
   { value: "tiktok", label: "TikTok" },
   { value: "consulting", label: "Consulting" },
@@ -33,23 +34,41 @@ const segments = [
   { value: "other", label: "Autre" },
 ];
 
+// Personal segments
+const PERSONAL_SEGMENTS = [
+  { value: "hobby", label: "Hobbies" },
+  { value: "wellness", label: "Bien-être" },
+  { value: "travel", label: "Voyages" },
+  { value: "other", label: "Autre" },
+];
+
 const segmentColors: Record<string, string> = {
+  // Work
   ecommerce: "border-segment-ecommerce text-segment-ecommerce",
   tiktok: "border-segment-tiktok text-segment-tiktok",
   consulting: "border-segment-consulting text-segment-consulting",
   oracle: "border-segment-oracle text-segment-oracle",
   data: "border-segment-data text-segment-data",
   tech: "border-segment-tech text-segment-tech",
+  // Personal
+  hobby: "border-segment-oracle text-segment-oracle",
+  wellness: "border-segment-data text-segment-data",
+  travel: "border-segment-consulting text-segment-consulting",
   other: "border-muted-foreground text-muted-foreground",
 };
 
 const segmentBgColors: Record<string, string> = {
+  // Work
   ecommerce: "bg-segment-ecommerce/20",
   tiktok: "bg-segment-tiktok/20",
   consulting: "bg-segment-consulting/20",
   oracle: "bg-segment-oracle/20",
   data: "bg-segment-data/20",
   tech: "bg-segment-tech/20",
+  // Personal
+  hobby: "bg-segment-oracle/20",
+  wellness: "bg-segment-data/20",
+  travel: "bg-segment-consulting/20",
   other: "bg-muted",
 };
 
@@ -70,10 +89,14 @@ export default function Projects() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  // Dynamic segments based on mode
+  const segments = mode === "work" ? WORK_SEGMENTS : PERSONAL_SEGMENTS;
+  const defaultSegment = mode === "work" ? "ecommerce" : "hobby";
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other",
+    segment: defaultSegment,
     status: "planned" as "planned" | "in_progress" | "completed" | "on_hold",
     deadline: "",
     budget: "",
@@ -81,7 +104,7 @@ export default function Projects() {
   const [editFormData, setEditFormData] = useState({
     name: "",
     description: "",
-    segment: "ecommerce" as "ecommerce" | "tiktok" | "consulting" | "oracle" | "data" | "tech" | "other",
+    segment: defaultSegment,
     status: "planned" as "planned" | "in_progress" | "completed" | "on_hold",
     deadline: "",
     budget: "",
@@ -108,10 +131,11 @@ export default function Projects() {
     e.preventDefault();
     
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await createProject.mutateAsync({
         name: formData.name,
         description: formData.description || null,
-        segment: formData.segment,
+        segment: formData.segment as any,
         status: formData.status,
         progress: 0,
         deadline: formData.deadline || null,
@@ -125,7 +149,7 @@ export default function Projects() {
       setFormData({
         name: "",
         description: "",
-        segment: "ecommerce",
+        segment: defaultSegment,
         status: "planned",
         deadline: "",
         budget: "",
@@ -153,11 +177,12 @@ export default function Projects() {
     if (!editingProject) return;
     
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateProject.mutateAsync({
         id: editingProject.id,
         name: editFormData.name,
         description: editFormData.description || null,
-        segment: editFormData.segment,
+        segment: editFormData.segment as any,
         status: editFormData.status,
         deadline: editFormData.deadline || null,
         budget: editFormData.budget ? parseFloat(editFormData.budget) : null,
