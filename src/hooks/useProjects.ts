@@ -21,6 +21,9 @@ export interface Project {
 
 export type ProjectInsert = Omit<Project, "id" | "created_at" | "updated_at">;
 
+// 1 minute staleTime for optimized caching during navigation
+const STALE_TIME_1_MIN = 60 * 1000;
+
 export function useProjects(mode?: "work" | "personal") {
   const { user } = useAuth();
 
@@ -41,6 +44,7 @@ export function useProjects(mode?: "work" | "personal") {
       return data as Project[];
     },
     enabled: !!user,
+    staleTime: STALE_TIME_1_MIN,
   });
 }
 
@@ -62,6 +66,7 @@ export function useProject(projectId: string | undefined) {
       return data as Project | null;
     },
     enabled: !!user && !!projectId,
+    staleTime: STALE_TIME_1_MIN,
   });
 }
 
