@@ -30,6 +30,9 @@ export interface FocusMission extends MissionWithProgress {
 
 export type MissionInsert = Omit<Mission, "id" | "created_at" | "updated_at">;
 
+// 1 minute staleTime for optimized caching during navigation
+const STALE_TIME_1_MIN = 60 * 1000;
+
 export function useMissions(projectId: string | undefined) {
   const { user } = useAuth();
 
@@ -46,6 +49,7 @@ export function useMissions(projectId: string | undefined) {
       return data as Mission[];
     },
     enabled: !!user && !!projectId,
+    staleTime: STALE_TIME_1_MIN,
   });
 }
 
@@ -54,6 +58,7 @@ export function useGlobalFocusMissions(mode: "work" | "personal") {
 
   return useQuery({
     queryKey: ["missions", "global-focus", mode],
+    staleTime: STALE_TIME_1_MIN,
     queryFn: async () => {
       // 1. Fetch all projects for this mode
       const { data: projects, error: projectsError } = await supabase
@@ -130,6 +135,7 @@ export function useMissionsWithProgress(projectId: string | undefined) {
 
   return useQuery({
     queryKey: ["missions", "withProgress", projectId],
+    staleTime: STALE_TIME_1_MIN,
     queryFn: async () => {
       // Fetch missions
       const { data: missions, error: missionsError } = await supabase
