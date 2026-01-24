@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, Trash2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, useDeleteTask, Task } from "@/hooks/useTasks";
+import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, useDeleteTask, Task, Subtask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
 import { toast } from "sonner";
 import {
@@ -61,7 +62,9 @@ export default function Tasks() {
     due_date: "",
     estimated_time: "60",
     time_spent: "0",
+    subtasks: [] as Subtask[],
   });
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
   const { data: tasks, isLoading } = useTasks(mode);
   const { data: projects } = useProjects(mode);
@@ -86,6 +89,7 @@ export default function Tasks() {
         estimated_time: parseInt(formData.estimated_time) || 60,
         time_spent: 0,
         mode: mode,
+        subtasks: [],
       });
       
       toast.success("Tâche créée !");
@@ -113,7 +117,9 @@ export default function Tasks() {
       due_date: task.due_date || "",
       estimated_time: task.estimated_time.toString(),
       time_spent: task.time_spent.toString(),
+      subtasks: task.subtasks || [],
     });
+    setNewSubtaskTitle("");
     setIsEditDialogOpen(true);
   };
 
@@ -131,6 +137,7 @@ export default function Tasks() {
         due_date: editFormData.due_date || null,
         estimated_time: parseInt(editFormData.estimated_time) || 60,
         time_spent: parseInt(editFormData.time_spent) || 0,
+        subtasks: editFormData.subtasks,
       });
       
       toast.success("Tâche mise à jour !");
@@ -139,6 +146,36 @@ export default function Tasks() {
     } catch (error) {
       toast.error("Erreur lors de la mise à jour");
     }
+  };
+
+  const handleAddSubtask = () => {
+    if (!newSubtaskTitle.trim()) return;
+    const newSubtask: Subtask = {
+      id: crypto.randomUUID(),
+      title: newSubtaskTitle.trim(),
+      completed: false,
+    };
+    setEditFormData({
+      ...editFormData,
+      subtasks: [...editFormData.subtasks, newSubtask],
+    });
+    setNewSubtaskTitle("");
+  };
+
+  const handleToggleSubtask = (subtaskId: string) => {
+    setEditFormData({
+      ...editFormData,
+      subtasks: editFormData.subtasks.map((s) =>
+        s.id === subtaskId ? { ...s, completed: !s.completed } : s
+      ),
+    });
+  };
+
+  const handleDeleteSubtask = (subtaskId: string) => {
+    setEditFormData({
+      ...editFormData,
+      subtasks: editFormData.subtasks.filter((s) => s.id !== subtaskId),
+    });
   };
 
   const handleToggle = async (id: string, currentStatus: string) => {
@@ -369,7 +406,20 @@ export default function Tasks() {
                     <p className={cn("font-medium", task.status === "completed" && "line-through")}>
                       {task.title}
                     </p>
-                    <p className="text-xs text-muted-foreground">{getProjectName(task.project_id)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">{getProjectName(task.project_id)}</p>
+                      {task.subtasks && task.subtasks.length > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <Progress 
+                            value={(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100} 
+                            className="h-1.5 w-16" 
+                          />
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Time tracking */}
@@ -501,6 +551,81 @@ export default function Tasks() {
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                   placeholder="Description optionnelle"
                 />
+              </div>
+
+              {/* Subtasks Section */}
+              <div className="space-y-3">
+                <Label>Sous-tâches</Label>
+                
+                {/* Subtask list */}
+                {editFormData.subtasks.length > 0 && (
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {editFormData.subtasks.map((subtask) => (
+                      <div 
+                        key={subtask.id} 
+                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
+                      >
+                        <Checkbox
+                          checked={subtask.completed}
+                          onCheckedChange={() => handleToggleSubtask(subtask.id)}
+                        />
+                        <span className={cn(
+                          "flex-1 text-sm",
+                          subtask.completed && "line-through text-muted-foreground"
+                        )}>
+                          {subtask.title}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleDeleteSubtask(subtask.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add subtask input */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ajouter une sous-tâche..."
+                    value={newSubtaskTitle}
+                    onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSubtask();
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    size="icon"
+                    onClick={handleAddSubtask}
+                    disabled={!newSubtaskTitle.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Progress indicator */}
+                {editFormData.subtasks.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Progress 
+                      value={(editFormData.subtasks.filter(s => s.completed).length / editFormData.subtasks.length) * 100} 
+                      className="h-2 flex-1" 
+                    />
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {editFormData.subtasks.filter(s => s.completed).length}/{editFormData.subtasks.length}
+                    </span>
+                  </div>
+                )}
               </div>
               
               <div className="flex gap-2">

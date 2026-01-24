@@ -97,7 +97,12 @@ export function DashboardLayout({ children, hideSidebar = false, headerContent }
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full relative overflow-hidden">
+        {/* Deep Space Ambient Glows */}
+        <div className="ambient-glow ambient-glow-1" />
+        <div className="ambient-glow ambient-glow-2" />
+        <div className="ambient-glow ambient-glow-3" />
+        
         {!hideSidebar && <AppSidebar />}
         
         <div className={cn(
