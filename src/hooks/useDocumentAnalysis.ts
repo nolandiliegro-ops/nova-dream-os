@@ -72,7 +72,6 @@ export const useAnalyzeDocument = () => {
       });
     },
     onError: (error) => {
-      console.error("Analysis error:", error);
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'analyse");
     },
   });
