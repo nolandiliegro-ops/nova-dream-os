@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { GlassCard } from "./GlassCard";
 import { useMode } from "@/contexts/ModeContext";
-import { useTodayMissions, parseDurationToMinutes, formatMinutesToDisplay } from "@/hooks/useMissions";
+import { useTodayMissions, useWeeklyMissions, parseDurationToMinutes, formatMinutesToDisplay } from "@/hooks/useMissions";
+import { useUserGoals } from "@/hooks/useUserGoals";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { Sun, Timer, CheckCircle2, Loader2, Target, Sparkles } from "lucide-react";
+import { Sun, Timer, CheckCircle2, Loader2, Target, Sparkles, AlertTriangle, Play, Pause } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
+import { useMissionTimer } from "@/contexts/MissionTimerContext";
 
 // Daily completion celebration - more intense!
 const triggerDailyCelebration = () => {
@@ -37,10 +41,34 @@ const triggerDailyCelebration = () => {
   frame();
 };
 
+// Custom tooltip for the weekly chart
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="glass-card px-3 py-2 text-xs">
+        <p className="font-medium">{data.date}</p>
+        <p className={cn(
+          "font-trading",
+          data.isOverloaded ? "text-destructive" : "text-primary"
+        )}>
+          {data.hours}h ({data.missionCount} mission{data.missionCount > 1 ? "s" : ""})
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export function DailyBriefingWidget() {
   const { mode } = useMode();
+  const { data: goals } = useUserGoals(2026, mode);
+  const dailyCapacity = goals?.daily_focus_capacity || 360;
+  
   const { data: todayMissions, isLoading } = useTodayMissions(mode);
+  const { data: weeklyData } = useWeeklyMissions(mode, dailyCapacity);
   const [celebrated, setCelebrated] = useState(false);
+  const { state: timerState, startTimer, pauseTimer, resumeTimer } = useMissionTimer();
 
   // Calculate totals
   const totalMinutes = todayMissions?.reduce(
@@ -54,6 +82,25 @@ export function DailyBriefingWidget() {
   const progress = totalMinutes > 0 ? (completedMinutes / totalMinutes) * 100 : 0;
   const completedCount = todayMissions?.filter(m => m.status === "completed").length || 0;
   const totalCount = todayMissions?.length || 0;
+
+  // Overload detection
+  const isOverloaded = totalMinutes > dailyCapacity;
+  const overloadMinutes = totalMinutes - dailyCapacity;
+
+  // Sort missions: in_progress first, then by order_index
+  const sortedMissions = useMemo(() => {
+    if (!todayMissions) return [];
+    return [...todayMissions].sort((a, b) => {
+      // Completed missions at the end
+      if (a.status === "completed" && b.status !== "completed") return 1;
+      if (a.status !== "completed" && b.status === "completed") return -1;
+      // In progress first
+      if (a.status === "in_progress" && b.status !== "in_progress") return -1;
+      if (a.status !== "in_progress" && b.status === "in_progress") return 1;
+      // Then by order_index
+      return a.order_index - b.order_index;
+    });
+  }, [todayMissions]);
 
   // Trigger celebration when 100% completed
   useEffect(() => {
@@ -69,17 +116,43 @@ export function DailyBriefingWidget() {
     setCelebrated(false);
   }, [mode]);
 
+  const handleTimerToggle = (mission: any) => {
+    const isThisMissionActive = timerState.missionId === mission.id;
+    
+    if (isThisMissionActive && timerState.isRunning) {
+      pauseTimer();
+    } else if (isThisMissionActive) {
+      resumeTimer();
+    } else {
+      startTimer(mission.id, mission.title, mission.estimated_duration);
+    }
+  };
+
   return (
     <GlassCard className="relative overflow-hidden">
-      {/* Gradient accent */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
+      {/* Gradient accent - changes based on overload status */}
+      <div className={cn(
+        "absolute inset-0 pointer-events-none",
+        isOverloaded 
+          ? "bg-gradient-to-br from-destructive/10 via-transparent to-destructive/10"
+          : "bg-gradient-to-br from-primary/5 via-transparent to-primary/5"
+      )} />
 
       <div className="relative space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
-              <Sun className="h-5 w-5 text-primary" />
+            <div className={cn(
+              "p-2 rounded-xl bg-gradient-to-br",
+              isOverloaded 
+                ? "from-destructive/20 to-destructive/10"
+                : "from-primary/20 to-primary/10"
+            )}>
+              {isOverloaded ? (
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              ) : (
+                <Sun className="h-5 w-5 text-primary" />
+              )}
             </div>
             <div>
               <h3 className="text-sm font-medium">Briefing du Jour</h3>
@@ -111,6 +184,17 @@ export function DailyBriefingWidget() {
                 <p className="text-lg font-trading text-muted-foreground">
                   Nono, aucune mission prévue pour aujourd'hui
                 </p>
+              ) : isOverloaded ? (
+                <div className="space-y-1">
+                  <p className="text-lg font-trading text-destructive flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 animate-pulse" />
+                    Attention Nono, journée surchargée !
+                  </p>
+                  <p className="text-sm text-destructive/80">
+                    {formatMinutesToDisplay(totalMinutes)} prévues vs {formatMinutesToDisplay(dailyCapacity)} de capacité 
+                    <span className="font-trading ml-1">(+{formatMinutesToDisplay(overloadMinutes)})</span>
+                  </p>
+                </div>
               ) : (
                 <p className="text-lg font-trading">
                   Nono, aujourd'hui c'est{" "}
@@ -143,38 +227,98 @@ export function DailyBriefingWidget() {
                     "h-2",
                     progress === 100 
                       ? "[&>div]:bg-gradient-to-r [&>div]:from-segment-ecommerce [&>div]:to-segment-ecommerce/80"
-                      : "[&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-primary/80"
+                      : isOverloaded
+                        ? "[&>div]:bg-gradient-to-r [&>div]:from-destructive [&>div]:to-destructive/80"
+                        : "[&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-primary/80"
                   )}
                 />
               </div>
             )}
 
-            {/* Mission list */}
+            {/* Weekly Load Chart */}
+            {weeklyData && weeklyData.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Charge des 7 prochains jours
+                </p>
+                <div className="h-16">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={weeklyData} barCategoryGap="20%">
+                      <XAxis 
+                        dataKey="day" 
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar 
+                        dataKey="hours" 
+                        radius={[4, 4, 0, 0]}
+                      >
+                        {weeklyData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`}
+                            fill={entry.isOverloaded ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
+                            opacity={index === 0 ? 1 : 0.7}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Capacity line indicator */}
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  Capacité : {formatMinutesToDisplay(dailyCapacity)}/jour
+                </p>
+              </div>
+            )}
+
+            {/* Mission list with play buttons */}
             {totalCount > 0 && (
               <div className="space-y-2 pt-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Missions du jour
                 </p>
-                <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
-                  {todayMissions?.slice(0, 5).map((mission) => {
+                <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                  {sortedMissions.slice(0, 6).map((mission) => {
                     const isCompleted = mission.status === "completed";
                     const duration = mission.estimated_duration;
+                    const isThisMissionActive = timerState.missionId === mission.id;
+                    const isRunning = isThisMissionActive && timerState.isRunning;
                     
                     return (
                       <div 
                         key={mission.id}
                         className={cn(
-                          "flex items-center justify-between gap-2 px-3 py-2 rounded-xl transition-colors",
+                          "flex items-center justify-between gap-2 px-3 py-2 rounded-xl transition-colors group",
                           isCompleted 
                             ? "bg-segment-ecommerce/10 text-segment-ecommerce"
-                            : "bg-muted/50 hover:bg-muted"
+                            : isThisMissionActive
+                              ? "bg-primary/20 ring-1 ring-primary/50"
+                              : "bg-muted/50 hover:bg-muted"
                         )}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           {isCompleted ? (
                             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
                           ) : (
-                            <Target className="h-4 w-4 flex-shrink-0 text-primary" />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "h-6 w-6 flex-shrink-0 rounded-full",
+                                isRunning 
+                                  ? "bg-primary/20 text-primary animate-pulse"
+                                  : "hover:bg-primary/20"
+                              )}
+                              onClick={() => handleTimerToggle(mission)}
+                            >
+                              {isRunning ? (
+                                <Pause className="h-3 w-3" />
+                              ) : (
+                                <Play className="h-3 w-3 text-primary" />
+                              )}
+                            </Button>
                           )}
                           <span className={cn(
                             "text-sm truncate",
@@ -192,9 +336,9 @@ export function DailyBriefingWidget() {
                       </div>
                     );
                   })}
-                  {(todayMissions?.length || 0) > 5 && (
+                  {(sortedMissions.length || 0) > 6 && (
                     <p className="text-xs text-muted-foreground text-center pt-1">
-                      + {(todayMissions?.length || 0) - 5} autre(s) mission(s)...
+                      + {sortedMissions.length - 6} autre(s) mission(s)...
                     </p>
                   )}
                 </div>

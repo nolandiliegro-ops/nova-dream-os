@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Task } from "./useTasks";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 
 export interface Mission {
   id: string;
@@ -540,4 +540,93 @@ export function useTodayMissions(mode: "work" | "personal") {
     },
     enabled: !!user,
   });
+}
+
+// ============= WEEKLY MISSIONS HOOK =============
+
+export interface DayLoad {
+  day: string; // "Lun", "Mar", etc.
+  date: string; // yyyy-MM-dd
+  minutes: number;
+  hours: number;
+  isOverloaded: boolean;
+  missionCount: number;
+}
+
+/**
+ * Fetch missions for the next 7 days and calculate daily workload
+ */
+export function useWeeklyMissions(mode: "work" | "personal", dailyCapacity: number = 360) {
+  const { user } = useAuth();
+  const today = format(new Date(), "yyyy-MM-dd");
+  const weekEnd = format(addDays(new Date(), 6), "yyyy-MM-dd");
+
+  return useQuery({
+    queryKey: ["missions", "weekly", mode, today, dailyCapacity],
+    staleTime: STALE_TIME_1_MIN,
+    queryFn: async () => {
+      // 1. Fetch all projects for this mode
+      const { data: projects, error: projectsError } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("mode", mode);
+
+      if (projectsError) throw projectsError;
+      if (!projects || projects.length === 0) {
+        // Return empty week data
+        return generateEmptyWeek(dailyCapacity);
+      }
+
+      const projectIds = projects.map(p => p.id);
+
+      // 2. Fetch missions with deadlines in the next 7 days
+      const { data: missions, error: missionsError } = await supabase
+        .from("missions")
+        .select("*")
+        .in("project_id", projectIds)
+        .gte("deadline", today)
+        .lte("deadline", weekEnd)
+        .neq("status", "completed");
+
+      if (missionsError) throw missionsError;
+
+      // 3. Group by day
+      const dayData: DayLoad[] = [];
+      for (let i = 0; i < 7; i++) {
+        const date = addDays(new Date(), i);
+        const dateStr = format(date, "yyyy-MM-dd");
+        const dayMissions = missions?.filter(m => m.deadline === dateStr) || [];
+        const totalMinutes = dayMissions.reduce(
+          (sum, m) => sum + parseDurationToMinutes(m.estimated_duration), 0
+        );
+        dayData.push({
+          day: format(date, "EEE").slice(0, 3),
+          date: dateStr,
+          minutes: totalMinutes,
+          hours: Math.round(totalMinutes / 60 * 10) / 10,
+          isOverloaded: totalMinutes > dailyCapacity,
+          missionCount: dayMissions.length,
+        });
+      }
+
+      return dayData;
+    },
+    enabled: !!user,
+  });
+}
+
+function generateEmptyWeek(dailyCapacity: number): DayLoad[] {
+  const data: DayLoad[] = [];
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(new Date(), i);
+    data.push({
+      day: format(date, "EEE").slice(0, 3),
+      date: format(date, "yyyy-MM-dd"),
+      minutes: 0,
+      hours: 0,
+      isOverloaded: false,
+      missionCount: 0,
+    });
+  }
+  return data;
 }

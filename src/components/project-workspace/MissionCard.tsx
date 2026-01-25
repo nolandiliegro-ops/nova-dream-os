@@ -14,7 +14,9 @@ import {
   Loader2,
   CalendarDays,
   Pencil,
-  Timer
+  Timer,
+  Play,
+  Pause
 } from "lucide-react";
 import { MissionWithProgress, useDeleteMission, useUpdateMission, useCompleteMission } from "@/hooks/useMissions";
 import { MissionTaskList } from "./MissionTaskList";
@@ -22,6 +24,7 @@ import { toast } from "sonner";
 import { format, differenceInHours, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import confetti from "canvas-confetti";
+import { useMissionTimer } from "@/contexts/MissionTimerContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,6 +111,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
   const deleteMission = useDeleteMission();
   const updateMission = useUpdateMission();
   const completeMission = useCompleteMission();
+  const { state: timerState, startTimer, pauseTimer, resumeTimer } = useMissionTimer();
 
   // Auto-update status based on progress
   const effectiveStatus = mission.progress === 100 
@@ -119,6 +123,20 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
   const config = statusConfig[effectiveStatus];
   const isUrgent = isDeadlineUrgent(mission.deadline);
   const isPastDeadline = isDeadlinePast(mission.deadline);
+  
+  // Timer state for this mission
+  const isThisMissionActive = timerState.missionId === mission.id;
+  const isTimerRunning = isThisMissionActive && timerState.isRunning;
+
+  const handleTimerToggle = () => {
+    if (isThisMissionActive && timerState.isRunning) {
+      pauseTimer();
+    } else if (isThisMissionActive) {
+      resumeTimer();
+    } else {
+      startTimer(mission.id, mission.title, mission.estimated_duration);
+    }
+  };
 
   const handleDelete = async () => {
     try {
@@ -172,12 +190,55 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-trading text-base truncate">{mission.title}</h4>
-              {/* Duration badge */}
+              {/* Duration badge with Play button */}
               {mission.estimated_duration && (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
-                  <Timer className="h-3 w-3" />
-                  <span className="font-trading">{mission.estimated_duration}</span>
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
+                    <Timer className="h-3 w-3" />
+                    <span className="font-trading">{mission.estimated_duration}</span>
+                  </div>
+                  {effectiveStatus !== "completed" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-6 w-6 rounded-full transition-all",
+                        isTimerRunning 
+                          ? "bg-primary/20 text-primary animate-pulse"
+                          : "hover:bg-primary/20 text-primary"
+                      )}
+                      onClick={handleTimerToggle}
+                      title={isTimerRunning ? "Pause le timer" : "Démarre le timer"}
+                    >
+                      {isTimerRunning ? (
+                        <Pause className="h-3 w-3" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                    </Button>
+                  )}
                 </div>
+              )}
+              {/* Play button when no duration */}
+              {!mission.estimated_duration && effectiveStatus !== "completed" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-6 w-6 rounded-full transition-all",
+                    isTimerRunning 
+                      ? "bg-primary/20 text-primary animate-pulse"
+                      : "hover:bg-primary/20 text-primary opacity-0 group-hover:opacity-100"
+                  )}
+                  onClick={handleTimerToggle}
+                  title={isTimerRunning ? "Pause le timer" : "Démarre le timer"}
+                >
+                  {isTimerRunning ? (
+                    <Pause className="h-3 w-3" />
+                  ) : (
+                    <Play className="h-3 w-3" />
+                  )}
+                </Button>
               )}
               {/* Deadline badge */}
               {mission.deadline && (
@@ -190,7 +251,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
                         isPastDeadline 
                           ? "bg-destructive/20 text-destructive animate-pulse"
                           : isUrgent 
-                            ? "bg-amber-500/20 text-amber-400 animate-pulse"
+                            ? "bg-segment-oracle/20 text-segment-oracle animate-pulse"
                             : "bg-muted text-muted-foreground"
                       )}
                     >

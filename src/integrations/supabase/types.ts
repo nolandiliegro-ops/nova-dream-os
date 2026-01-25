@@ -144,6 +144,7 @@ export type Database = {
           order_index: number
           project_id: string
           status: string
+          time_spent: number
           title: string
           updated_at: string
           user_id: string
@@ -157,6 +158,7 @@ export type Database = {
           order_index?: number
           project_id: string
           status?: string
+          time_spent?: number
           title: string
           updated_at?: string
           user_id: string
@@ -170,6 +172,7 @@ export type Database = {
           order_index?: number
           project_id?: string
           status?: string
+          time_spent?: number
           title?: string
           updated_at?: string
           user_id?: string
@@ -419,6 +422,7 @@ export type Database = {
           annual_projects_goal: number
           annual_revenue_goal: number
           created_at: string
+          daily_focus_capacity: number
           id: string
           mode: string
           updated_at: string
@@ -429,6 +433,7 @@ export type Database = {
           annual_projects_goal?: number
           annual_revenue_goal?: number
           created_at?: string
+          daily_focus_capacity?: number
           id?: string
           mode?: string
           updated_at?: string
@@ -439,6 +444,7 @@ export type Database = {
           annual_projects_goal?: number
           annual_revenue_goal?: number
           created_at?: string
+          daily_focus_capacity?: number
           id?: string
           mode?: string
           updated_at?: string
