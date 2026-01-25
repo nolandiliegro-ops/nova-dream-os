@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { useMode } from "@/contexts/ModeContext";
@@ -9,12 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, Trash2, X } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { 
+  Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, 
+  Trash2, X, Star, Target, CalendarIcon, MoreHorizontal
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, useDeleteTask, Task, Subtask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
-import { useMissions } from "@/hooks/useMissions";
+import { useMissions, useUpdateMission, useCreateMission, useDeleteMission, useCompleteMission, Mission } from "@/hooks/useMissions";
+import { useAllMissions, useMissionStats, MissionWithContext } from "@/hooks/useAllMissions";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +34,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const priorityConfig = {
   high: { label: "Haute", color: "text-destructive", bg: "bg-destructive/20" },
@@ -42,12 +58,22 @@ function formatTime(minutes: number): string {
 
 export default function Tasks() {
   const { mode } = useMode();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"all" | "work" | "personal">("all");
+  
+  // Task dialogs
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
+  const [deleteTaskConfirmOpen, setDeleteTaskConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [formData, setFormData] = useState({
+  
+  // Mission dialogs
+  const [isMissionDialogOpen, setIsMissionDialogOpen] = useState(false);
+  const [deleteMissionConfirmOpen, setDeleteMissionConfirmOpen] = useState(false);
+  const [missionToDelete, setMissionToDelete] = useState<string | null>(null);
+
+  // Task form
+  const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
     priority: "medium" as "low" | "medium" | "high",
@@ -56,7 +82,9 @@ export default function Tasks() {
     due_date: "",
     estimated_time: "60",
   });
-  const [editFormData, setEditFormData] = useState({
+  
+  // Edit task form
+  const [editTaskForm, setEditTaskForm] = useState({
     title: "",
     description: "",
     priority: "medium" as "low" | "medium" | "high",
@@ -69,57 +97,82 @@ export default function Tasks() {
   });
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
-  const { data: tasks, isLoading } = useTasks(mode);
-  const { data: projects } = useProjects(mode);
-  const { data: missions } = useMissions(formData.project_id || undefined);
-  const { data: editMissions } = useMissions(editFormData.project_id || undefined);
-  const stats = useTaskStats(mode);
+  // Mission form
+  const [missionForm, setMissionForm] = useState({
+    title: "",
+    description: "",
+    project_id: "",
+    deadline: "",
+    estimated_duration: "",
+  });
+
+  // Data hooks
+  const { data: allTasks, isLoading: tasksLoading } = useTasks();
+  const { data: allMissions, isLoading: missionsLoading } = useAllMissions();
+  const { data: projects } = useProjects();
+  const { data: projectMissions } = useMissions(taskForm.project_id || undefined);
+  const { data: editProjectMissions } = useMissions(editTaskForm.project_id || undefined);
+  const taskStats = useTaskStats();
+  const missionStats = useMissionStats();
+
+  // Mutations
   const createTask = useCreateTask();
-  const toggleComplete = useToggleTaskComplete();
+  const toggleTaskComplete = useToggleTaskComplete();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+  const createMission = useCreateMission();
+  const updateMission = useUpdateMission();
+  const deleteMission = useDeleteMission();
+  const completeMission = useCompleteMission();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Filtered data based on active tab
+  const filteredTasks = useMemo(() => {
+    if (!allTasks) return [];
+    if (activeTab === "all") return allTasks;
+    return allTasks.filter(t => t.mode === activeTab);
+  }, [allTasks, activeTab]);
+
+  const filteredMissions = useMemo(() => {
+    if (!allMissions) return [];
+    if (activeTab === "all") return allMissions;
+    return allMissions.filter(m => {
+      const effectiveMode = m.project_id ? m.projectMode : "work";
+      return effectiveMode === activeTab;
+    });
+  }, [allMissions, activeTab]);
+
+  // Task handlers
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
       await createTask.mutateAsync({
-        title: formData.title,
-        description: formData.description || null,
-        priority: formData.priority,
+        title: taskForm.title,
+        description: taskForm.description || null,
+        priority: taskForm.priority,
         status: "todo",
-        project_id: formData.project_id || null,
-        mission_id: formData.mission_id || null,
-        due_date: formData.due_date || null,
+        project_id: taskForm.project_id || null,
+        mission_id: taskForm.mission_id || null,
+        due_date: taskForm.due_date || null,
         completed_at: null,
-        estimated_time: parseInt(formData.estimated_time) || 60,
+        estimated_time: parseInt(taskForm.estimated_time) || 60,
         time_spent: 0,
         mode: mode,
         subtasks: [],
       });
-      
       toast.success("Tâche créée !");
-      setIsDialogOpen(false);
-      setFormData({
-        title: "",
-        description: "",
-        priority: "medium",
-        project_id: "",
-        mission_id: "",
-        due_date: "",
-        estimated_time: "60",
-      });
-    } catch (error) {
+      setIsTaskDialogOpen(false);
+      setTaskForm({ title: "", description: "", priority: "medium", project_id: "", mission_id: "", due_date: "", estimated_time: "60" });
+    } catch {
       toast.error("Erreur lors de la création");
     }
   };
 
-  const handleEditClick = (task: Task) => {
+  const handleEditTaskClick = (task: Task) => {
     setEditingTask(task);
-    setEditFormData({
+    setEditTaskForm({
       title: task.title,
       description: task.description || "",
-      priority: task.priority as "low" | "medium" | "high",
+      priority: task.priority,
       project_id: task.project_id || "",
       mission_id: task.mission_id || "",
       due_date: task.due_date || "",
@@ -128,35 +181,61 @@ export default function Tasks() {
       subtasks: task.subtasks || [],
     });
     setNewSubtaskTitle("");
-    setIsEditDialogOpen(true);
+    setIsEditTaskDialogOpen(true);
   };
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
+  const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTask) return;
-    
     try {
       await updateTask.mutateAsync({
         id: editingTask.id,
-        title: editFormData.title,
-        description: editFormData.description || null,
-        priority: editFormData.priority,
-        project_id: editFormData.project_id || null,
-        mission_id: editFormData.mission_id || null,
-        due_date: editFormData.due_date || null,
-        estimated_time: parseInt(editFormData.estimated_time) || 60,
-        time_spent: parseInt(editFormData.time_spent) || 0,
-        subtasks: editFormData.subtasks,
+        title: editTaskForm.title,
+        description: editTaskForm.description || null,
+        priority: editTaskForm.priority,
+        project_id: editTaskForm.project_id || null,
+        mission_id: editTaskForm.mission_id || null,
+        due_date: editTaskForm.due_date || null,
+        estimated_time: parseInt(editTaskForm.estimated_time) || 60,
+        time_spent: parseInt(editTaskForm.time_spent) || 0,
+        subtasks: editTaskForm.subtasks,
       });
-      
       toast.success("Tâche mise à jour !");
-      setIsEditDialogOpen(false);
+      setIsEditTaskDialogOpen(false);
       setEditingTask(null);
-    } catch (error) {
+    } catch {
       toast.error("Erreur lors de la mise à jour");
     }
   };
 
+  const handleToggleTask = async (id: string, currentStatus: string) => {
+    try {
+      await toggleTaskComplete.mutateAsync({ id, completed: currentStatus !== "completed" });
+    } catch {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
+  const handleTaskDateChange = async (taskId: string, date: Date | undefined) => {
+    if (!date) return;
+    try {
+      await updateTask.mutateAsync({ id: taskId, due_date: format(date, "yyyy-MM-dd") });
+      toast.success("Date mise à jour");
+    } catch {
+      toast.error("Erreur");
+    }
+  };
+
+  const handleTaskPriorityChange = async (taskId: string, priority: "low" | "medium" | "high") => {
+    try {
+      await updateTask.mutateAsync({ id: taskId, priority });
+      toast.success("Priorité mise à jour");
+    } catch {
+      toast.error("Erreur");
+    }
+  };
+
+  // Subtask handlers
   const handleAddSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
     const newSubtask: Subtask = {
@@ -164,45 +243,88 @@ export default function Tasks() {
       title: newSubtaskTitle.trim(),
       completed: false,
     };
-    setEditFormData({
-      ...editFormData,
-      subtasks: [...editFormData.subtasks, newSubtask],
-    });
+    setEditTaskForm({ ...editTaskForm, subtasks: [...editTaskForm.subtasks, newSubtask] });
     setNewSubtaskTitle("");
   };
 
   const handleToggleSubtask = (subtaskId: string) => {
-    setEditFormData({
-      ...editFormData,
-      subtasks: editFormData.subtasks.map((s) =>
-        s.id === subtaskId ? { ...s, completed: !s.completed } : s
-      ),
+    setEditTaskForm({
+      ...editTaskForm,
+      subtasks: editTaskForm.subtasks.map(s => s.id === subtaskId ? { ...s, completed: !s.completed } : s),
     });
   };
 
   const handleDeleteSubtask = (subtaskId: string) => {
-    setEditFormData({
-      ...editFormData,
-      subtasks: editFormData.subtasks.filter((s) => s.id !== subtaskId),
+    setEditTaskForm({
+      ...editTaskForm,
+      subtasks: editTaskForm.subtasks.filter(s => s.id !== subtaskId),
     });
   };
 
-  const handleToggle = async (id: string, currentStatus: string) => {
+  // Mission handlers
+  const handleCreateMission = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      await toggleComplete.mutateAsync({
-        id,
-        completed: currentStatus !== "completed",
+      await createMission.mutateAsync({
+        title: missionForm.title,
+        description: missionForm.description || null,
+        project_id: missionForm.project_id || null,
+        status: "pending",
+        order_index: 0,
+        deadline: missionForm.deadline || null,
+        estimated_duration: missionForm.estimated_duration || null,
+        is_focus: false,
+        time_spent: 0,
       });
-    } catch (error) {
+      toast.success("Mission créée !");
+      setIsMissionDialogOpen(false);
+      setMissionForm({ title: "", description: "", project_id: "", deadline: "", estimated_duration: "" });
+    } catch {
+      toast.error("Erreur lors de la création");
+    }
+  };
+
+  const handleToggleMissionComplete = async (mission: MissionWithContext) => {
+    try {
+      if (mission.status === "completed") {
+        await updateMission.mutateAsync({ id: mission.id, status: "pending" });
+      } else {
+        await completeMission.mutateAsync({ missionId: mission.id, complete: true });
+      }
+    } catch {
       toast.error("Erreur lors de la mise à jour");
     }
   };
 
-  // Group tasks by project
+  const handleToggleMissionFocus = async (mission: MissionWithContext) => {
+    try {
+      await updateMission.mutateAsync({ id: mission.id, is_focus: !mission.is_focus });
+    } catch {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
+  const handleMissionDateChange = async (missionId: string, date: Date | undefined) => {
+    if (!date) return;
+    try {
+      await updateMission.mutateAsync({ id: missionId, deadline: format(date, "yyyy-MM-dd") });
+      toast.success("Deadline mise à jour");
+    } catch {
+      toast.error("Erreur");
+    }
+  };
+
+  // Helpers
   const getProjectName = (projectId: string | null) => {
     if (!projectId) return "Sans projet";
     const project = projects?.find(p => p.id === projectId);
     return project?.name || "Projet inconnu";
+  };
+
+  const getMissionName = (missionId: string | null) => {
+    if (!missionId) return null;
+    const mission = allMissions?.find(m => m.id === missionId);
+    return mission?.title || null;
   };
 
   return (
@@ -212,153 +334,44 @@ export default function Tasks() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">
-              Tâches <span className="text-gradient">& ROI</span>
+              Tâches <span className="text-gradient">& Missions</span>
             </h1>
             <p className="text-muted-foreground">
-              {mode === "work" ? "Optimise ton temps pour maximiser les résultats" : "Tes tâches personnelles"}
+              Centre de contrôle unifié pour organiser ta vie
             </p>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nouvelle tâche
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Créer une tâche</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Titre</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Ex: Finaliser landing page"
-                    required
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="priority">Priorité</Label>
-                    <Select
-                      value={formData.priority}
-                      onValueChange={(value: typeof formData.priority) => setFormData({ ...formData, priority: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high">Haute</SelectItem>
-                        <SelectItem value="medium">Moyenne</SelectItem>
-                        <SelectItem value="low">Basse</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="estimated_time">Temps estimé (min)</Label>
-                    <Input
-                      id="estimated_time"
-                      type="number"
-                      value={formData.estimated_time}
-                      onChange={(e) => setFormData({ ...formData, estimated_time: e.target.value })}
-                      placeholder="60"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="project">Projet</Label>
-                    <Select
-                      value={formData.project_id || "none"}
-                      onValueChange={(value) => setFormData({ 
-                        ...formData, 
-                        project_id: value === "none" ? "" : value,
-                        mission_id: "" // Reset mission when project changes
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Aucun projet" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucun projet</SelectItem>
-                        {projects?.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="due_date">Échéance</Label>
-                    <Input
-                      id="due_date"
-                      type="date"
-                      value={formData.due_date}
-                      onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Mission selector - only show if project is selected */}
-                {formData.project_id && (
-                  <div className="space-y-2">
-                    <Label htmlFor="mission">Mission (optionnel)</Label>
-                    <Select
-                      value={formData.mission_id || "none"}
-                      onValueChange={(value) => setFormData({ 
-                        ...formData, 
-                        mission_id: value === "none" ? "" : value 
-                      })}
-                    >
-                      <SelectTrigger className="rounded-2xl">
-                        <SelectValue placeholder="Aucune mission" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucune mission</SelectItem>
-                        {missions?.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Description optionnelle"
-                  />
-                </div>
-                
-                <Button type="submit" className="w-full" disabled={createTask.isPending}>
-                  {createTask.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Créer la tâche"
-                  )}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {/* Filter Tabs */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList>
+              <TabsTrigger value="all">Tout</TabsTrigger>
+              <TabsTrigger value="work">Work</TabsTrigger>
+              <TabsTrigger value="personal">Perso</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
-        {/* Stats with ROI */}
+        {/* Stats Row */}
         <div className="grid gap-4 md:grid-cols-4">
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                <Target className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{missionStats.focused}/{missionStats.total - missionStats.completed}</p>
+                <p className="text-xs text-muted-foreground">Missions en focus</p>
+              </div>
+            </div>
+          </GlassCard>
+          
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                 <CheckSquare className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.completed}/{stats.total}</p>
+                <p className="text-2xl font-bold">{taskStats.completed}/{taskStats.total}</p>
                 <p className="text-xs text-muted-foreground">Tâches complétées</p>
               </div>
             </div>
@@ -370,20 +383,8 @@ export default function Tasks() {
                 <Timer className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{formatTime(stats.totalEstimatedTime)}</p>
-                <p className="text-xs text-muted-foreground">Temps estimé total</p>
-              </div>
-            </div>
-          </GlassCard>
-          
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-segment-oracle/20">
-                <Clock className="h-5 w-5 text-segment-oracle" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{formatTime(stats.totalTimeSpent)}</p>
-                <p className="text-xs text-muted-foreground">Temps passé</p>
+                <p className="text-2xl font-bold">{formatTime(taskStats.totalEstimatedTime)}</p>
+                <p className="text-xs text-muted-foreground">Temps estimé</p>
               </div>
             </div>
           </GlassCard>
@@ -392,19 +393,13 @@ export default function Tasks() {
             <div className="flex items-center gap-3">
               <div className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-lg",
-                stats.roi >= 0 ? "bg-segment-ecommerce/20" : "bg-destructive/20"
+                taskStats.roi >= 0 ? "bg-segment-ecommerce/20" : "bg-destructive/20"
               )}>
-                <TrendingUp className={cn(
-                  "h-5 w-5",
-                  stats.roi >= 0 ? "text-segment-ecommerce" : "text-destructive"
-                )} />
+                <TrendingUp className={cn("h-5 w-5", taskStats.roi >= 0 ? "text-segment-ecommerce" : "text-destructive")} />
               </div>
               <div>
-                <p className={cn(
-                  "text-2xl font-bold",
-                  stats.roi >= 0 ? "text-segment-ecommerce" : "text-destructive"
-                )}>
-                  {stats.roi >= 0 ? "+" : ""}{stats.roi.toFixed(0)}%
+                <p className={cn("text-2xl font-bold", taskStats.roi >= 0 ? "text-segment-ecommerce" : "text-destructive")}>
+                  {taskStats.roi >= 0 ? "+" : ""}{taskStats.roi.toFixed(0)}%
                 </p>
                 <p className="text-xs text-muted-foreground">ROI Personnel</p>
               </div>
@@ -412,117 +407,241 @@ export default function Tasks() {
           </GlassCard>
         </div>
 
-        {/* Tasks List */}
-        <GlassCard className="p-6">
-          <h3 className="mb-4 font-semibold">Toutes les tâches</h3>
-          
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        {/* Two Column Layout */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* MISSIONS Column */}
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Missions
+              </h3>
+              <Dialog open={isMissionDialogOpen} onOpenChange={setIsMissionDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    Mission
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Créer une mission</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateMission} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Titre</Label>
+                      <Input
+                        value={missionForm.title}
+                        onChange={(e) => setMissionForm({ ...missionForm, title: e.target.value })}
+                        placeholder="Ex: Refonte landing page"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Projet (optionnel)</Label>
+                        <Select
+                          value={missionForm.project_id || "none"}
+                          onValueChange={(v) => setMissionForm({ ...missionForm, project_id: v === "none" ? "" : v })}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Sans projet" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sans projet</SelectItem>
+                            {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Deadline</Label>
+                        <Input
+                          type="date"
+                          value={missionForm.deadline}
+                          onChange={(e) => setMissionForm({ ...missionForm, deadline: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Durée estimée</Label>
+                      <Input
+                        value={missionForm.estimated_duration}
+                        onChange={(e) => setMissionForm({ ...missionForm, estimated_duration: e.target.value })}
+                        placeholder="Ex: 2h, 3j"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Input
+                        value={missionForm.description}
+                        onChange={(e) => setMissionForm({ ...missionForm, description: e.target.value })}
+                        placeholder="Description optionnelle"
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={createMission.isPending}>
+                      {createMission.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer la mission"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
-          ) : tasks && tasks.length > 0 ? (
-            <div className="space-y-3">
-              {tasks.map((task) => (
-                <div 
-                  key={task.id}
-                  className={cn(
-                    "flex items-center gap-4 rounded-lg border-l-4 bg-muted/30 p-4 transition-all hover:bg-muted/50 cursor-pointer",
-                    task.priority === "high" ? "border-l-destructive" : 
-                    task.priority === "medium" ? "border-l-segment-oracle" : "border-l-segment-consulting",
-                    task.status === "completed" && "opacity-60"
-                  )}
-                  onClick={() => handleEditClick(task)}
-                >
-                  <Checkbox 
-                    checked={task.status === "completed"} 
-                    onCheckedChange={() => handleToggle(task.id, task.status)}
-                    onClick={(e) => e.stopPropagation()}
+
+            {missionsLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : filteredMissions.length > 0 ? (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                {filteredMissions.map((mission) => (
+                  <MissionRow
+                    key={mission.id}
+                    mission={mission}
+                    onToggleComplete={() => handleToggleMissionComplete(mission)}
+                    onToggleFocus={() => handleToggleMissionFocus(mission)}
+                    onDateChange={(date) => handleMissionDateChange(mission.id, date)}
+                    onDelete={() => { setMissionToDelete(mission.id); setDeleteMissionConfirmOpen(true); }}
                   />
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("font-medium", task.status === "completed" && "line-through")}>
-                      {task.title}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-muted-foreground">{getProjectName(task.project_id)}</p>
-                      {task.subtasks && task.subtasks.length > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <Progress 
-                            value={(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100} 
-                            className="h-1.5 w-16" 
-                          />
-                          <span className="text-[10px] text-muted-foreground font-medium">
-                            {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
-                          </span>
-                        </div>
-                      )}
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8 text-sm">
+                Aucune mission. Crée-en une !
+              </p>
+            )}
+          </GlassCard>
+
+          {/* TASKS Column */}
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <CheckSquare className="h-4 w-4" />
+                Tâches
+              </h3>
+              <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    Tâche
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Créer une tâche</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateTask} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Titre</Label>
+                      <Input
+                        value={taskForm.title}
+                        onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                        placeholder="Ex: Finaliser mockups"
+                        required
+                      />
                     </div>
-                  </div>
-                  
-                  {/* Time tracking */}
-                  <div className="hidden sm:flex items-center gap-2 text-xs">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Timer className="h-3 w-3" />
-                      <span>{formatTime(task.time_spent)}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Priorité</Label>
+                        <Select value={taskForm.priority} onValueChange={(v: typeof taskForm.priority) => setTaskForm({ ...taskForm, priority: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="high">Haute</SelectItem>
+                            <SelectItem value="medium">Moyenne</SelectItem>
+                            <SelectItem value="low">Basse</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Temps estimé (min)</Label>
+                        <Input
+                          type="number"
+                          value={taskForm.estimated_time}
+                          onChange={(e) => setTaskForm({ ...taskForm, estimated_time: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <span className="text-muted-foreground">/</span>
-                    <span className="text-muted-foreground">{formatTime(task.estimated_time)}</span>
-                  </div>
-                  
-                  {/* Priority badge */}
-                  <div className={cn(
-                    "hidden sm:flex items-center gap-1 rounded-full px-2 py-1 text-xs",
-                    priorityConfig[task.priority].bg,
-                    priorityConfig[task.priority].color
-                  )}>
-                    {task.priority === "high" && <AlertTriangle className="h-3 w-3" />}
-                    <span>{priorityConfig[task.priority].label}</span>
-                  </div>
-                  
-                  {/* Due date */}
-                  {task.due_date && (
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(task.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Projet</Label>
+                        <Select
+                          value={taskForm.project_id || "none"}
+                          onValueChange={(v) => setTaskForm({ ...taskForm, project_id: v === "none" ? "" : v, mission_id: "" })}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Aucun projet</SelectItem>
+                            {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Échéance</Label>
+                        <Input
+                          type="date"
+                          value={taskForm.due_date}
+                          onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                        />
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {taskForm.project_id && (
+                      <div className="space-y-2">
+                        <Label>Mission</Label>
+                        <Select
+                          value={taskForm.mission_id || "none"}
+                          onValueChange={(v) => setTaskForm({ ...taskForm, mission_id: v === "none" ? "" : v })}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Aucune mission</SelectItem>
+                            {projectMissions?.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <Button type="submit" className="w-full" disabled={createTask.isPending}>
+                      {createTask.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer la tâche"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">
-              Aucune tâche pour le moment.<br />
-              <span className="text-sm">Clique sur "Nouvelle tâche" pour commencer.</span>
-            </p>
-          )}
-        </GlassCard>
+
+            {tasksLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : filteredTasks.length > 0 ? (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                {filteredTasks.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    projectName={getProjectName(task.project_id)}
+                    missionName={getMissionName(task.mission_id)}
+                    onToggleComplete={() => handleToggleTask(task.id, task.status)}
+                    onDateChange={(date) => handleTaskDateChange(task.id, date)}
+                    onPriorityChange={(p) => handleTaskPriorityChange(task.id, p)}
+                    onClick={() => handleEditTaskClick(task)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8 text-sm">
+                Aucune tâche. Crée-en une !
+              </p>
+            )}
+          </GlassCard>
+        </div>
 
         {/* Edit Task Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog open={isEditTaskDialogOpen} onOpenChange={setIsEditTaskDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Modifier la tâche</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+            <form onSubmit={handleUpdateTask} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-title">Titre</Label>
-                <Input
-                  id="edit-title"
-                  value={editFormData.title}
-                  onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                  required
-                />
+                <Label>Titre</Label>
+                <Input value={editTaskForm.title} onChange={(e) => setEditTaskForm({ ...editTaskForm, title: e.target.value })} required />
               </div>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-priority">Priorité</Label>
-                  <Select
-                    value={editFormData.priority}
-                    onValueChange={(value: typeof editFormData.priority) => setEditFormData({ ...editFormData, priority: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Label>Priorité</Label>
+                  <Select value={editTaskForm.priority} onValueChange={(v: typeof editTaskForm.priority) => setEditTaskForm({ ...editTaskForm, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="high">Haute</SelectItem>
                       <SelectItem value="medium">Moyenne</SelectItem>
@@ -531,200 +650,103 @@ export default function Tasks() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-project">Projet</Label>
+                  <Label>Projet</Label>
                   <Select
-                    value={editFormData.project_id || "none"}
-                    onValueChange={(value) => setEditFormData({ 
-                      ...editFormData, 
-                      project_id: value === "none" ? "" : value,
-                      mission_id: "" // Reset mission when project changes
-                    })}
+                    value={editTaskForm.project_id || "none"}
+                    onValueChange={(v) => setEditTaskForm({ ...editTaskForm, project_id: v === "none" ? "" : v, mission_id: "" })}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Aucun projet" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Aucun projet</SelectItem>
-                      {projects?.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                      ))}
+                      {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-
-              {/* Mission selector in edit form */}
-              {editFormData.project_id && (
+              {editTaskForm.project_id && (
                 <div className="space-y-2">
-                  <Label htmlFor="edit-mission">Mission</Label>
+                  <Label>Mission</Label>
                   <Select
-                    value={editFormData.mission_id || "none"}
-                    onValueChange={(value) => setEditFormData({ 
-                      ...editFormData, 
-                      mission_id: value === "none" ? "" : value 
-                    })}
+                    value={editTaskForm.mission_id || "none"}
+                    onValueChange={(v) => setEditTaskForm({ ...editTaskForm, mission_id: v === "none" ? "" : v })}
                   >
-                    <SelectTrigger className="rounded-2xl">
-                      <SelectValue placeholder="Aucune mission" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Aucune mission</SelectItem>
-                      {editMissions?.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                      ))}
+                      {editProjectMissions?.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-due_date">Échéance</Label>
-                  <Input
-                    id="edit-due_date"
-                    type="date"
-                    value={editFormData.due_date}
-                    onChange={(e) => setEditFormData({ ...editFormData, due_date: e.target.value })}
-                  />
+                  <Label>Échéance</Label>
+                  <Input type="date" value={editTaskForm.due_date} onChange={(e) => setEditTaskForm({ ...editTaskForm, due_date: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-estimated_time">Temps estimé (min)</Label>
-                  <Input
-                    id="edit-estimated_time"
-                    type="number"
-                    value={editFormData.estimated_time}
-                    onChange={(e) => setEditFormData({ ...editFormData, estimated_time: e.target.value })}
-                  />
+                  <Label>Temps estimé (min)</Label>
+                  <Input type="number" value={editTaskForm.estimated_time} onChange={(e) => setEditTaskForm({ ...editTaskForm, estimated_time: e.target.value })} />
                 </div>
               </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="edit-time_spent">Temps passé (min)</Label>
-                <Input
-                  id="edit-time_spent"
-                  type="number"
-                  value={editFormData.time_spent}
-                  onChange={(e) => setEditFormData({ ...editFormData, time_spent: e.target.value })}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Input
-                  id="edit-description"
-                  value={editFormData.description}
-                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                  placeholder="Description optionnelle"
-                />
+                <Label>Temps passé (min)</Label>
+                <Input type="number" value={editTaskForm.time_spent} onChange={(e) => setEditTaskForm({ ...editTaskForm, time_spent: e.target.value })} />
               </div>
 
-              {/* Subtasks Section */}
+              {/* Subtasks */}
               <div className="space-y-3">
                 <Label>Sous-tâches</Label>
-                
-                {/* Subtask list */}
-                {editFormData.subtasks.length > 0 && (
+                {editTaskForm.subtasks.length > 0 && (
                   <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {editFormData.subtasks.map((subtask) => (
-                      <div 
-                        key={subtask.id} 
-                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/30"
-                      >
-                        <Checkbox
-                          checked={subtask.completed}
-                          onCheckedChange={() => handleToggleSubtask(subtask.id)}
-                        />
-                        <span className={cn(
-                          "flex-1 text-sm",
-                          subtask.completed && "line-through text-muted-foreground"
-                        )}>
-                          {subtask.title}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDeleteSubtask(subtask.id)}
-                        >
+                    {editTaskForm.subtasks.map((subtask) => (
+                      <div key={subtask.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                        <Checkbox checked={subtask.completed} onCheckedChange={() => handleToggleSubtask(subtask.id)} />
+                        <span className={cn("flex-1 text-sm", subtask.completed && "line-through text-muted-foreground")}>{subtask.title}</span>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteSubtask(subtask.id)}>
                           <X className="h-3 w-3" />
                         </Button>
                       </div>
                     ))}
                   </div>
                 )}
-
-                {/* Add subtask input */}
                 <div className="flex gap-2">
                   <Input
                     placeholder="Ajouter une sous-tâche..."
                     value={newSubtaskTitle}
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddSubtask();
-                      }
-                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSubtask(); } }}
                     className="flex-1"
                   />
-                  <Button 
-                    type="button" 
-                    variant="secondary" 
-                    size="icon"
-                    onClick={handleAddSubtask}
-                    disabled={!newSubtaskTitle.trim()}
-                  >
+                  <Button type="button" variant="secondary" size="icon" onClick={handleAddSubtask} disabled={!newSubtaskTitle.trim()}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-
-                {/* Progress indicator */}
-                {editFormData.subtasks.length > 0 && (
+                {editTaskForm.subtasks.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <Progress 
-                      value={(editFormData.subtasks.filter(s => s.completed).length / editFormData.subtasks.length) * 100} 
-                      className="h-2 flex-1" 
-                    />
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {editFormData.subtasks.filter(s => s.completed).length}/{editFormData.subtasks.length}
-                    </span>
+                    <Progress value={(editTaskForm.subtasks.filter(s => s.completed).length / editTaskForm.subtasks.length) * 100} className="h-2 flex-1" />
+                    <span className="text-xs text-muted-foreground">{editTaskForm.subtasks.filter(s => s.completed).length}/{editTaskForm.subtasks.length}</span>
                   </div>
                 )}
               </div>
-              
+
               <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    setTaskToDelete(editingTask?.id || null);
-                    setDeleteConfirmOpen(true);
-                  }}
-                >
+                <Button type="button" variant="destructive" size="sm" onClick={() => { setTaskToDelete(editingTask?.id || null); setDeleteTaskConfirmOpen(true); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
                 <Button type="submit" className="flex-1" disabled={updateTask.isPending}>
-                  {updateTask.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Enregistrer"
-                  )}
+                  {updateTask.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        {/* Delete Task Confirmation */}
+        <AlertDialog open={deleteTaskConfirmOpen} onOpenChange={setDeleteTaskConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Supprimer cette tâche ?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Cette action est irréversible. La tâche sera définitivement supprimée.
-              </AlertDialogDescription>
+              <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Annuler</AlertDialogCancel>
@@ -735,13 +757,39 @@ export default function Tasks() {
                     try {
                       await deleteTask.mutateAsync(taskToDelete);
                       toast.success("Tâche supprimée");
-                      setIsEditDialogOpen(false);
-                      setDeleteConfirmOpen(false);
+                      setIsEditTaskDialogOpen(false);
+                      setDeleteTaskConfirmOpen(false);
                       setTaskToDelete(null);
                       setEditingTask(null);
-                    } catch {
-                      toast.error("Erreur lors de la suppression");
-                    }
+                    } catch { toast.error("Erreur"); }
+                  }
+                }}
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Mission Confirmation */}
+        <AlertDialog open={deleteMissionConfirmOpen} onOpenChange={setDeleteMissionConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer cette mission ?</AlertDialogTitle>
+              <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  if (missionToDelete) {
+                    try {
+                      await deleteMission.mutateAsync(missionToDelete);
+                      toast.success("Mission supprimée");
+                      setDeleteMissionConfirmOpen(false);
+                      setMissionToDelete(null);
+                    } catch { toast.error("Erreur"); }
                   }
                 }}
               >
@@ -752,5 +800,168 @@ export default function Tasks() {
         </AlertDialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+// ============= SUB-COMPONENTS =============
+
+interface MissionRowProps {
+  mission: MissionWithContext;
+  onToggleComplete: () => void;
+  onToggleFocus: () => void;
+  onDateChange: (date: Date | undefined) => void;
+  onDelete: () => void;
+}
+
+function MissionRow({ mission, onToggleComplete, onToggleFocus, onDateChange, onDelete }: MissionRowProps) {
+  const isCompleted = mission.status === "completed";
+  
+  return (
+    <div className={cn(
+      "flex items-center gap-3 rounded-lg bg-muted/30 p-3 transition-all hover:bg-muted/50 group",
+      isCompleted && "opacity-60",
+      mission.is_focus && "ring-1 ring-segment-oracle/50"
+    )}>
+      <Checkbox checked={isCompleted} onCheckedChange={onToggleComplete} />
+      
+      <button 
+        onClick={onToggleFocus}
+        className="shrink-0"
+      >
+        <Star className={cn(
+          "h-4 w-4 transition-colors",
+          mission.is_focus ? "fill-segment-oracle text-segment-oracle" : "text-muted-foreground hover:text-segment-oracle"
+        )} />
+      </button>
+      
+      <div className="flex-1 min-w-0">
+        <p className={cn("font-medium text-sm truncate", isCompleted && "line-through")}>{mission.title}</p>
+        <p className="text-xs text-muted-foreground truncate">
+          {mission.projectName || "Sans projet"}
+          {mission.totalTasks > 0 && ` • ${mission.completedTasks}/${mission.totalTasks} tâches`}
+        </p>
+      </div>
+
+      {/* Progress */}
+      {mission.totalTasks > 0 && (
+        <Progress value={mission.progress} className="h-1.5 w-12" />
+      )}
+
+      {/* Deadline Date Picker */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <CalendarIcon className="h-3 w-3" />
+            {mission.deadline ? format(new Date(mission.deadline), "d MMM", { locale: fr }) : "Date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            mode="single"
+            selected={mission.deadline ? new Date(mission.deadline) : undefined}
+            onSelect={onDateChange}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+
+      {/* Actions Menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onToggleFocus}>
+            <Star className="h-4 w-4 mr-2" />
+            {mission.is_focus ? "Retirer du focus" : "Ajouter au focus"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onDelete} className="text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" />
+            Supprimer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+interface TaskRowProps {
+  task: Task;
+  projectName: string;
+  missionName: string | null;
+  onToggleComplete: () => void;
+  onDateChange: (date: Date | undefined) => void;
+  onPriorityChange: (priority: "low" | "medium" | "high") => void;
+  onClick: () => void;
+}
+
+function TaskRow({ task, projectName, missionName, onToggleComplete, onDateChange, onPriorityChange, onClick }: TaskRowProps) {
+  const isCompleted = task.status === "completed";
+  
+  return (
+    <div 
+      className={cn(
+        "flex items-center gap-3 rounded-lg border-l-4 bg-muted/30 p-3 transition-all hover:bg-muted/50 cursor-pointer group",
+        task.priority === "high" ? "border-l-destructive" : 
+        task.priority === "medium" ? "border-l-segment-oracle" : "border-l-segment-consulting",
+        isCompleted && "opacity-60"
+      )}
+      onClick={onClick}
+    >
+      <Checkbox 
+        checked={isCompleted} 
+        onCheckedChange={onToggleComplete}
+        onClick={(e) => e.stopPropagation()}
+      />
+      
+      <div className="flex-1 min-w-0">
+        <p className={cn("font-medium text-sm truncate", isCompleted && "line-through")}>{task.title}</p>
+        <p className="text-xs text-muted-foreground truncate">
+          {missionName || projectName}
+          {task.subtasks && task.subtasks.length > 0 && (
+            <span> • {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+          )}
+        </p>
+      </div>
+
+      {/* Priority Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="sm" className={cn(
+            "h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity",
+            priorityConfig[task.priority].color
+          )}>
+            {task.priority === "high" && <AlertTriangle className="h-3 w-3 mr-1" />}
+            {priorityConfig[task.priority].label}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem onClick={() => onPriorityChange("high")} className="text-destructive">Haute</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onPriorityChange("medium")} className="text-segment-oracle">Moyenne</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onPriorityChange("low")} className="text-segment-consulting">Basse</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Date Picker */}
+      <Popover>
+        <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+            <CalendarIcon className="h-3 w-3 mr-1" />
+            {task.due_date ? format(new Date(task.due_date), "d MMM", { locale: fr }) : "Date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
+          <Calendar
+            mode="single"
+            selected={task.due_date ? new Date(task.due_date) : undefined}
+            onSelect={onDateChange}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
