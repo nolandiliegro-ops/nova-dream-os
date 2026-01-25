@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Play, Pause, Timer, Palette, Code, Container, Zap, Globe, FileText, Wre
 import { EnrichedTask } from "@/hooks/useDailyActionPlan";
 import { useTaskTimer } from "@/contexts/TaskTimerContext";
 import { useToggleTaskComplete } from "@/hooks/useTasks";
+import { TaskDetailDialog } from "@/components/shared/TaskDetailDialog";
 import { toast } from "sonner";
 
 // Tool to icon mapping
@@ -66,10 +67,32 @@ interface DailyTaskRowProps {
 export const DailyTaskRow = memo(function DailyTaskRow({ task }: DailyTaskRowProps) {
   const { state: timerState, startTimer, pauseTimer, resumeTimer } = useTaskTimer();
   const toggleComplete = useToggleTaskComplete();
+  const [detailOpen, setDetailOpen] = useState(false);
   
   const isCompleted = task.status === "completed";
   const isThisTaskActive = timerState.taskId === task.id;
   const isRunning = isThisTaskActive && timerState.isRunning;
+
+  // Convert EnrichedTask to Task format for dialog
+  const taskForDialog = {
+    id: task.id,
+    user_id: "",
+    title: task.title,
+    description: task.description,
+    priority: task.priority,
+    status: task.status,
+    due_date: task.dueDate,
+    completed_at: null,
+    estimated_time: task.estimatedTime,
+    time_spent: task.timeSpent,
+    mode: "work" as const,
+    project_id: task.projectId,
+    mission_id: task.missionId,
+    subtasks: [],
+    required_tools: task.requiredTools,
+    created_at: "",
+    updated_at: "",
+  };
 
   const handleToggleComplete = () => {
     toggleComplete.mutate(
@@ -146,9 +169,11 @@ export const DailyTaskRow = memo(function DailyTaskRow({ task }: DailyTaskRowPro
         )}
         <span
           className={cn(
-            "text-sm truncate",
+            "text-sm truncate cursor-pointer hover:text-primary transition-colors",
             isCompleted && "line-through opacity-70"
           )}
+          onClick={() => setDetailOpen(true)}
+          title="Ouvrir les détails"
         >
           {task.title}
         </span>
@@ -192,6 +217,13 @@ export const DailyTaskRow = memo(function DailyTaskRow({ task }: DailyTaskRowPro
           </div>
         )}
       </div>
+
+      {/* Task Detail Dialog */}
+      <TaskDetailDialog
+        task={taskForDialog}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
     </div>
   );
 });

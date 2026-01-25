@@ -1,7 +1,9 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Package, ListTodo } from "lucide-react";
 import { TaskGroup } from "@/hooks/useDailyActionPlan";
 import { DailyTaskRow } from "./DailyTaskRow";
+import { MissionWorkspaceDialog } from "@/components/project-workspace/MissionWorkspaceDialog";
+import { useMission } from "@/hooks/useMissions";
 import { cn } from "@/lib/utils";
 import { formatMinutesToDisplay } from "@/hooks/useMissions";
 
@@ -12,6 +14,19 @@ interface TaskGroupSectionProps {
 export const TaskGroupSection = memo(function TaskGroupSection({ group }: TaskGroupSectionProps) {
   const isIndependent = group.groupKey === "independent";
   const allCompleted = group.tasks.every(t => t.status === "completed");
+  
+  // Mission workspace dialog state
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  
+  // Fetch mission data when needed
+  const missionId = isIndependent ? undefined : group.groupKey;
+  const { data: mission } = useMission(missionId);
+
+  const handleMissionClick = () => {
+    if (!isIndependent) {
+      setWorkspaceOpen(true);
+    }
+  };
 
   return (
     <div className="space-y-1.5">
@@ -20,7 +35,14 @@ export const TaskGroupSection = memo(function TaskGroupSection({ group }: TaskGr
         "flex items-center justify-between gap-2 px-1",
         allCompleted && "opacity-60"
       )}>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <button 
+          className={cn(
+            "flex items-center gap-2 text-xs text-muted-foreground transition-colors",
+            !isIndependent && "hover:text-primary cursor-pointer"
+          )}
+          onClick={handleMissionClick}
+          disabled={isIndependent}
+        >
           {isIndependent ? (
             <ListTodo className="h-3 w-3" />
           ) : (
@@ -34,7 +56,7 @@ export const TaskGroupSection = memo(function TaskGroupSection({ group }: TaskGr
               • {group.projectName}
             </span>
           )}
-        </div>
+        </button>
         <span className="text-xs font-trading text-muted-foreground">
           {formatMinutesToDisplay(group.totalMinutes)}
         </span>
@@ -46,6 +68,16 @@ export const TaskGroupSection = memo(function TaskGroupSection({ group }: TaskGr
           <DailyTaskRow key={task.id} task={task} />
         ))}
       </div>
+
+      {/* Mission Workspace Dialog */}
+      {!isIndependent && mission && (
+        <MissionWorkspaceDialog
+          mission={mission}
+          open={workspaceOpen}
+          onOpenChange={setWorkspaceOpen}
+          projectId={mission.project_id}
+        />
+      )}
     </div>
   );
 });
