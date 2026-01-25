@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Task } from "./useTasks";
+import { format } from "date-fns";
 
 export interface Mission {
   id: string;
@@ -12,6 +13,7 @@ export interface Mission {
   status: "pending" | "in_progress" | "completed";
   order_index: number;
   deadline: string | null;
+  estimated_duration: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +35,59 @@ export type MissionInsert = Omit<Mission, "id" | "created_at" | "updated_at">;
 
 // 1 minute staleTime for optimized caching during navigation
 const STALE_TIME_1_MIN = 60 * 1000;
+
+// ============= DURATION UTILITIES =============
+
+/**
+ * Parse duration string to minutes
+ * Supports: "3h", "2j", "45min", "1h30", etc.
+ */
+export const parseDurationToMinutes = (duration: string | null | undefined): number => {
+  if (!duration) return 0;
+  
+  const normalized = duration.toLowerCase().trim();
+  let totalMinutes = 0;
+  
+  // Hours: "3h", "3 heures", "1h30"
+  const hoursMatch = normalized.match(/(\d+)\s*h/);
+  if (hoursMatch) {
+    totalMinutes += parseInt(hoursMatch[1]) * 60;
+  }
+  
+  // Days: "2j", "2 jours" (8h/jour)
+  const daysMatch = normalized.match(/(\d+)\s*j/);
+  if (daysMatch) {
+    totalMinutes += parseInt(daysMatch[1]) * 8 * 60;
+  }
+  
+  // Minutes: "45min", "45 minutes", "h30" (after hours)
+  const minsMatch = normalized.match(/(\d+)\s*m(?:in)?/);
+  if (minsMatch) {
+    totalMinutes += parseInt(minsMatch[1]);
+  }
+  
+  // Handle "1h30" pattern (30 after h without m)
+  const compactMatch = normalized.match(/h(\d{1,2})(?!\d)/);
+  if (compactMatch && !minsMatch) {
+    totalMinutes += parseInt(compactMatch[1]);
+  }
+  
+  return totalMinutes;
+};
+
+/**
+ * Format minutes to human-readable display
+ */
+export const formatMinutesToDisplay = (minutes: number): string => {
+  if (minutes <= 0) return "0min";
+  
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  
+  if (hours === 0) return `${remaining}min`;
+  if (remaining === 0) return `${hours}h`;
+  return `${hours}h${remaining.toString().padStart(2, '0')}`;
+};
 
 export function useMissions(projectId: string | undefined) {
   const { user } = useAuth();
@@ -291,7 +346,7 @@ export function useCreateMissionsFromTemplate() {
       missions,
     }: {
       projectId: string;
-      missions: { title: string; description: string }[];
+      missions: { title: string; description: string; estimatedDuration?: string | null }[];
     }) => {
       if (!user) throw new Error("User not authenticated");
 
@@ -311,6 +366,7 @@ export function useCreateMissionsFromTemplate() {
         user_id: user.id,
         title: m.title,
         description: m.description,
+        estimated_duration: m.estimatedDuration || null,
         status: "pending",
         order_index: startIndex + 1 + idx,
         deadline: null,
@@ -417,5 +473,71 @@ export function useCompleteMission() {
       queryClient.invalidateQueries({ queryKey: ["missions"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
+  });
+}
+
+// ============= TODAY'S MISSIONS HOOK =============
+
+export interface TodayMission extends Mission {
+  projectName: string;
+  projectSegment: string;
+}
+
+/**
+ * Fetch missions for today:
+ * - Missions with deadline = today
+ * - OR missions with status = "in_progress"
+ */
+export function useTodayMissions(mode: "work" | "personal") {
+  const { user } = useAuth();
+  const today = format(new Date(), "yyyy-MM-dd");
+
+  return useQuery({
+    queryKey: ["missions", "today", mode, today],
+    staleTime: STALE_TIME_1_MIN,
+    queryFn: async () => {
+      // 1. Fetch all projects for this mode
+      const { data: projects, error: projectsError } = await supabase
+        .from("projects")
+        .select("id, name, segment")
+        .eq("mode", mode);
+
+      if (projectsError) throw projectsError;
+      if (!projects || projects.length === 0) return [];
+
+      const projectIds = projects.map(p => p.id);
+      const projectMap = new Map(projects.map(p => [p.id, p]));
+
+      // 2. Fetch missions with deadline today OR in_progress status
+      const { data: missions, error: missionsError } = await supabase
+        .from("missions")
+        .select("*")
+        .in("project_id", projectIds)
+        .or(`deadline.eq.${today},status.eq.in_progress`);
+
+      if (missionsError) throw missionsError;
+      if (!missions) return [];
+
+      // 3. Map with project info
+      const todayMissions: TodayMission[] = missions.map((mission) => {
+        const project = projectMap.get(mission.project_id);
+        return {
+          ...mission,
+          status: mission.status as "pending" | "in_progress" | "completed",
+          projectName: project?.name || "Projet inconnu",
+          projectSegment: project?.segment || "other",
+        };
+      });
+
+      // Sort: in_progress first, then by deadline, then by title
+      return todayMissions.sort((a, b) => {
+        if (a.status === "completed" && b.status !== "completed") return 1;
+        if (a.status !== "completed" && b.status === "completed") return -1;
+        if (a.status === "in_progress" && b.status !== "in_progress") return -1;
+        if (a.status !== "in_progress" && b.status === "in_progress") return 1;
+        return a.title.localeCompare(b.title);
+      });
+    },
+    enabled: !!user,
   });
 }

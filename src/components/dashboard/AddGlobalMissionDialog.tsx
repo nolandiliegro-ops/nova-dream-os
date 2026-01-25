@@ -116,6 +116,7 @@ export function AddGlobalMissionDialog({ open, onOpenChange }: AddGlobalMissionD
         status: "pending",
         order_index: 0,
         deadline: deadline ? format(deadline, "yyyy-MM-dd") : null,
+        estimated_duration: null,
       });
 
       toast.success("Mission créée !");

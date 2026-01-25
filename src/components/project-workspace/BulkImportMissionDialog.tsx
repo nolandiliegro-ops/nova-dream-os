@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, Sparkles, Target } from "lucide-react";
+import { Loader2, FileText, Sparkles, Target, Timer } from "lucide-react";
 import { useCreateMissionsFromTemplate } from "@/hooks/useMissions";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -17,6 +17,7 @@ import confetti from "canvas-confetti";
 interface ParsedMission {
   title: string;
   description: string;
+  estimatedDuration: string | null;
 }
 
 interface BulkImportMissionDialogProps {
@@ -36,6 +37,35 @@ const cleanDescription = (lines: string[]): string => {
     .join('\n');
 };
 
+/**
+ * Extract duration from text
+ * Supports: "3h", "2j", "45min", "Estimation: 3h", "Durée: 2 jours", etc.
+ */
+const extractDuration = (text: string): string | null => {
+  const patterns = [
+    /estimation\s*:\s*(\d+\s*[hjm]\w*)/i,
+    /durée\s*:\s*(\d+\s*[hjm]\w*)/i,
+    /temps\s*:\s*(\d+\s*[hjm]\w*)/i,
+    /(\d+)\s*h(?:eure)?s?\b/i,
+    /(\d+)\s*j(?:our)?s?\b/i,
+    /(\d+)\s*min(?:ute)?s?\b/i,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      // Clean up the matched duration
+      const duration = match[1] || match[0];
+      return duration.toLowerCase().replace(/\s+/g, '').replace(/(heures?|jours?|minutes?)/gi, (m) => {
+        if (m.toLowerCase().startsWith('h')) return 'h';
+        if (m.toLowerCase().startsWith('j')) return 'j';
+        return 'min';
+      });
+    }
+  }
+  return null;
+};
+
 const parseStructuredRoadmap = (text: string): ParsedMission[] => {
   const lines = text.split('\n');
   const missions: ParsedMission[] = [];
@@ -45,9 +75,6 @@ const parseStructuredRoadmap = (text: string): ParsedMission[] => {
     /^(\d+\.?\d*\.?\s+)(.+)$/,           // 4.1 Titre, 1. Titre
     /^(#{1,3}\s+)(.+)$/,                  // # Titre, ## Titre
   ];
-  
-  // Pattern pour les lignes simples (fallback)
-  const simpleBulletPattern = /^[-•*]\s+(.+)$/;
   
   let currentMission: ParsedMission | null = null;
   let descriptionBuffer: string[] = [];
@@ -71,7 +98,7 @@ const parseStructuredRoadmap = (text: string): ParsedMission[] => {
       .split('\n')
       .map(line => line.replace(/^[-•*]\s*/, '').trim())
       .filter(line => line.length > 0)
-      .map(title => ({ title, description: '' }));
+      .map(title => ({ title, description: '', estimatedDuration: null }));
   }
   
   // Parsing structuré
@@ -93,14 +120,16 @@ const parseStructuredRoadmap = (text: string): ParsedMission[] => {
     }
     
     if (isTitle && cleanTitle.length < 150) {
-      // Sauvegarde la mission précédente
+      // Sauvegarde la mission précédente avec duration extraction
       if (currentMission) {
+        const fullText = descriptionBuffer.join('\n');
         currentMission.description = cleanDescription(descriptionBuffer);
+        currentMission.estimatedDuration = extractDuration(fullText);
         missions.push(currentMission);
       }
       
       // Nouvelle mission
-      currentMission = { title: cleanTitle, description: '' };
+      currentMission = { title: cleanTitle, description: '', estimatedDuration: null };
       descriptionBuffer = [];
     } else if (currentMission) {
       // Ajoute à la description courante
@@ -110,7 +139,9 @@ const parseStructuredRoadmap = (text: string): ParsedMission[] => {
   
   // N'oublie pas la dernière mission
   if (currentMission) {
+    const fullText = descriptionBuffer.join('\n');
     currentMission.description = cleanDescription(descriptionBuffer);
+    currentMission.estimatedDuration = extractDuration(fullText);
     missions.push(currentMission);
   }
   
@@ -163,11 +194,14 @@ export function BulkImportMissionDialog({
         missions: parsedMissions.map(m => ({
           title: m.title,
           description: m.description,
+          estimatedDuration: m.estimatedDuration,
         })),
       });
 
       const count = parsedMissions.length;
-      toast.success(`${count} mission${count > 1 ? 's' : ''} créée${count > 1 ? 's' : ''} avec descriptions !`);
+      const withDuration = parsedMissions.filter(m => m.estimatedDuration).length;
+      const durationInfo = withDuration > 0 ? ` (${withDuration} avec durée)` : '';
+      toast.success(`${count} mission${count > 1 ? 's' : ''} créée${count > 1 ? 's' : ''}${durationInfo} !`);
 
       if (count > 3) {
         triggerBulkCelebration(count);
@@ -232,10 +266,18 @@ Chaque section numérotée = 1 mission avec sa description`}
                 </p>
                 {parsedMissions.slice(0, 2).map((mission, idx) => (
                   <div key={idx} className="bg-background/80 rounded-md p-2 space-y-1">
-                    <p className="font-medium text-sm flex items-center gap-2">
-                      <Target className="h-3.5 w-3.5 text-primary" />
-                      {mission.title}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-sm flex items-center gap-2 min-w-0">
+                        <Target className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <span className="truncate">{mission.title}</span>
+                      </p>
+                      {mission.estimatedDuration && (
+                        <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                          <Timer className="h-3 w-3" />
+                          {mission.estimatedDuration}
+                        </span>
+                      )}
+                    </div>
                     {mission.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 pl-5">
                         {mission.description.substring(0, 120)}

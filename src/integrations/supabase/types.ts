@@ -139,6 +139,7 @@ export type Database = {
           created_at: string
           deadline: string | null
           description: string | null
+          estimated_duration: string | null
           id: string
           order_index: number
           project_id: string
@@ -151,6 +152,7 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string | null
+          estimated_duration?: string | null
           id?: string
           order_index?: number
           project_id: string
@@ -163,6 +165,7 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string | null
+          estimated_duration?: string | null
           id?: string
           order_index?: number
           project_id?: string

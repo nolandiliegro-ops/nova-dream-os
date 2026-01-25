@@ -13,7 +13,8 @@ import {
   Trash2,
   Loader2,
   CalendarDays,
-  Pencil
+  Pencil,
+  Timer
 } from "lucide-react";
 import { MissionWithProgress, useDeleteMission, useUpdateMission, useCompleteMission } from "@/hooks/useMissions";
 import { MissionTaskList } from "./MissionTaskList";
@@ -171,6 +172,13 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-trading text-base truncate">{mission.title}</h4>
+              {/* Duration badge */}
+              {mission.estimated_duration && (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
+                  <Timer className="h-3 w-3" />
+                  <span className="font-trading">{mission.estimated_duration}</span>
+                </div>
+              )}
               {/* Deadline badge */}
               {mission.deadline && (
                 <Popover open={deadlinePopoverOpen} onOpenChange={setDeadlinePopoverOpen}>
