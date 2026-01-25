@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { Button } from "@/components/ui/button";
-import { Map, Plus, Loader2 } from "lucide-react";
+import { Map, Plus, Loader2, FileText } from "lucide-react";
 import { useMissionsWithProgress } from "@/hooks/useMissions";
 import { MissionCard } from "./MissionCard";
 import { AddMissionDialog } from "./AddMissionDialog";
+import { BulkImportMissionDialog } from "./BulkImportMissionDialog";
 
 interface ProjectRoadmapWidgetProps {
   projectId: string;
@@ -14,6 +15,7 @@ interface ProjectRoadmapWidgetProps {
 export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetProps) {
   const { data: missions, isLoading } = useMissionsWithProgress(projectId);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
 
   return (
     <GlassCard className="p-5 h-full flex flex-col">
@@ -26,14 +28,25 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
             ({missions?.length || 0} missions)
           </span>
         </div>
-        <Button 
-          onClick={() => setIsAddDialogOpen(true)} 
-          size="sm"
-          className="gap-1.5 rounded-2xl"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Ajouter</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setIsBulkDialogOpen(true)}
+            size="sm"
+            variant="outline"
+            className="gap-1.5 rounded-2xl"
+          >
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Import Rapide</span>
+          </Button>
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)} 
+            size="sm"
+            className="gap-1.5 rounded-2xl"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Ajouter</span>
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
@@ -84,6 +97,12 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
         mode={mode}
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
+      />
+
+      <BulkImportMissionDialog
+        projectId={projectId}
+        open={isBulkDialogOpen}
+        onOpenChange={setIsBulkDialogOpen}
       />
     </GlassCard>
   );
