@@ -8,12 +8,13 @@ export interface UserGoal {
   year: number;
   annual_revenue_goal: number;
   annual_projects_goal: number;
+  daily_focus_capacity: number; // in minutes, default 360 (6h)
   mode: "work" | "personal";
   created_at: string;
   updated_at: string;
 }
 
-export type UserGoalUpdate = Partial<Pick<UserGoal, "annual_revenue_goal" | "annual_projects_goal">>;
+export type UserGoalUpdate = Partial<Pick<UserGoal, "annual_revenue_goal" | "annual_projects_goal" | "daily_focus_capacity">>;
 
 export function useUserGoals(year: number = 2026, mode: "work" | "personal" = "work") {
   const { user } = useAuth();
@@ -40,6 +41,7 @@ export function useUserGoals(year: number = 2026, mode: "work" | "personal" = "w
           mode,
           annual_revenue_goal: mode === "work" ? 1000000 : 50000,
           annual_projects_goal: mode === "work" ? 12 : 6,
+          daily_focus_capacity: 360, // 6h default
           created_at: "",
           updated_at: "",
         } as UserGoal;
@@ -89,6 +91,7 @@ export function useUpdateUserGoals() {
             mode,
             annual_revenue_goal: goals.annual_revenue_goal ?? (mode === "work" ? 1000000 : 50000),
             annual_projects_goal: goals.annual_projects_goal ?? (mode === "work" ? 12 : 6),
+            daily_focus_capacity: goals.daily_focus_capacity ?? 360,
           })
           .select()
           .single();

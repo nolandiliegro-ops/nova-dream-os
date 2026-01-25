@@ -38,6 +38,7 @@ export default function Settings() {
   const [fullName, setFullName] = useState("");
   const [revenueGoal, setRevenueGoal] = useState(1000000);
   const [projectsGoal, setProjectsGoal] = useState(12);
+  const [dailyCapacity, setDailyCapacity] = useState(360);
   const [webhookToken, setWebhookToken] = useState("");
 
   // Sync state with fetched data
@@ -51,6 +52,7 @@ export default function Settings() {
     if (goals) {
       setRevenueGoal(Number(goals.annual_revenue_goal));
       setProjectsGoal(goals.annual_projects_goal);
+      setDailyCapacity(goals.daily_focus_capacity || 360);
     }
   }, [goals]);
 
@@ -85,6 +87,7 @@ export default function Settings() {
         goals: {
           annual_revenue_goal: revenueGoal,
           annual_projects_goal: projectsGoal,
+          daily_focus_capacity: dailyCapacity,
         },
       });
       toast.success(`Objectifs ${mode === "work" ? "Work" : "Perso"} 2026 mis à jour ! 🎯`);
@@ -239,6 +242,42 @@ export default function Settings() {
               <p className="text-xs text-muted-foreground">
                 Nombre de projets à livrer en 2026
               </p>
+            </div>
+          </div>
+
+          {/* Daily Focus Capacity */}
+          <div className="mt-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <Label htmlFor="daily-capacity" className="text-sm font-medium">
+                  Capacité Focus Journalière
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Heures de travail productif par jour
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-trading text-primary">
+                  {Math.floor(dailyCapacity / 60)}h{dailyCapacity % 60 > 0 ? `${dailyCapacity % 60}` : ""}
+                </span>
+                <p className="text-xs text-muted-foreground">/ jour</p>
+              </div>
+            </div>
+            <Input 
+              id="daily-capacity" 
+              type="range" 
+              min={60}
+              max={720}
+              step={30}
+              value={dailyCapacity}
+              onChange={(e) => setDailyCapacity(Number(e.target.value))}
+              disabled={isLoading}
+              className="w-full accent-primary"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>1h</span>
+              <span>6h (recommandé)</span>
+              <span>12h</span>
             </div>
           </div>
           
