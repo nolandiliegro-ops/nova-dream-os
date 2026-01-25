@@ -95,6 +95,45 @@ export type Database = {
         }
         Relationships: []
       }
+      habits: {
+        Row: {
+          color: string | null
+          completed_days: Json
+          created_at: string
+          frequency: string
+          icon: string | null
+          id: string
+          mode: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          completed_days?: Json
+          created_at?: string
+          frequency?: string
+          icon?: string | null
+          id?: string
+          mode?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          completed_days?: Json
+          created_at?: string
+          frequency?: string
+          icon?: string | null
+          id?: string
+          mode?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       missions: {
         Row: {
           created_at: string

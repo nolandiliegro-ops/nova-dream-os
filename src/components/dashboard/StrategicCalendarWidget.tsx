@@ -9,22 +9,10 @@ import { format, isSameDay, differenceInHours, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
-const segmentLabels: Record<string, string> = {
-  // Work
-  ecommerce: "E-commerce",
-  tiktok: "TikTok",
-  consulting: "Consulting",
-  oracle: "Oracle",
-  data: "Les Enquêtes",
-  tech: "Dream App",
-  // Personal
-  hobby: "Hobbies",
-  wellness: "Bien-être",
-  travel: "Voyages",
-  other: "Autre",
-};
+import { SEGMENT_LABELS, getSegmentLabel } from "@/config/segments";
 
-const segmentColors: Record<string, string> = {
+// Badge colors for calendar missions
+const segmentBadgeColors: Record<string, string> = {
   // Work
   ecommerce: "bg-segment-ecommerce/20 text-segment-ecommerce border-segment-ecommerce/30",
   tiktok: "bg-segment-tiktok/20 text-segment-tiktok border-segment-tiktok/30",
@@ -208,9 +196,9 @@ export function StrategicCalendarWidget() {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={cn(
                         "text-xs px-1.5 py-0.5 rounded-full border shrink-0",
-                        segmentColors[mission.projectSegment] || segmentColors.other
+                        segmentBadgeColors[mission.projectSegment] || segmentBadgeColors.other
                       )}>
-                        {segmentLabels[mission.projectSegment] || "Autre"}
+                        {getSegmentLabel(mission.projectSegment)}
                       </span>
                       <span className="text-sm font-medium truncate">
                         {mission.title}
