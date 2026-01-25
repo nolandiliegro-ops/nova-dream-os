@@ -117,6 +117,8 @@ export function AddGlobalMissionDialog({ open, onOpenChange }: AddGlobalMissionD
         order_index: 0,
         deadline: deadline ? format(deadline, "yyyy-MM-dd") : null,
         estimated_duration: null,
+        is_focus: false,
+        time_spent: 0,
       });
 
       toast.success("Mission créée !");

@@ -16,7 +16,8 @@ import {
   Pencil,
   Timer,
   Play,
-  Pause
+  Pause,
+  Star
 } from "lucide-react";
 import { MissionWithProgress, useDeleteMission, useUpdateMission, useCompleteMission } from "@/hooks/useMissions";
 import { MissionTaskList } from "./MissionTaskList";
@@ -189,6 +190,24 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Focus Star Toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-6 w-6 rounded-full transition-all flex-shrink-0",
+                  mission.is_focus 
+                    ? "text-segment-oracle hover:text-segment-oracle/80"
+                    : "text-muted-foreground hover:text-segment-oracle opacity-0 group-hover:opacity-100"
+                )}
+                onClick={() => updateMission.mutateAsync({ 
+                  id: mission.id, 
+                  is_focus: !mission.is_focus 
+                })}
+                title={mission.is_focus ? "Retirer du focus" : "Ajouter au focus Dashboard"}
+              >
+                <Star className={cn("h-4 w-4", mission.is_focus && "fill-current")} />
+              </Button>
               <h4 className="font-trading text-base truncate">{mission.title}</h4>
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (

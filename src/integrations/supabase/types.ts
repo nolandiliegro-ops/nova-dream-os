@@ -141,6 +141,7 @@ export type Database = {
           description: string | null
           estimated_duration: string | null
           id: string
+          is_focus: boolean
           order_index: number
           project_id: string
           status: string
@@ -155,6 +156,7 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          is_focus?: boolean
           order_index?: number
           project_id: string
           status?: string
@@ -169,6 +171,7 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          is_focus?: boolean
           order_index?: number
           project_id?: string
           status?: string
