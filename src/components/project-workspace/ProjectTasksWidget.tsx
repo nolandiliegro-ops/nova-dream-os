@@ -57,6 +57,7 @@ export function ProjectTasksWidget({ projectId, projectName, mode }: ProjectTask
         time_spent: 0,
         mode,
         subtasks: [],
+        required_tools: [],
       });
       toast.success("Tâche ajoutée !");
       setNewTaskTitle("");

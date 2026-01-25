@@ -17,10 +17,12 @@ import {
   Timer,
   Play,
   Pause,
-  Star
+  Star,
+  ExternalLink
 } from "lucide-react";
 import { MissionWithProgress, useDeleteMission, useUpdateMission, useCompleteMission } from "@/hooks/useMissions";
 import { MissionTaskList } from "./MissionTaskList";
+import { MissionWorkspaceDialog } from "./MissionWorkspaceDialog";
 import { toast } from "sonner";
 import { format, differenceInHours, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -109,6 +111,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deadlinePopoverOpen, setDeadlinePopoverOpen] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const deleteMission = useDeleteMission();
   const updateMission = useUpdateMission();
   const completeMission = useCompleteMission();
@@ -208,7 +211,14 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               >
                 <Star className={cn("h-4 w-4", mission.is_focus && "fill-current")} />
               </Button>
-              <h4 className="font-trading text-base truncate">{mission.title}</h4>
+              <button 
+                onClick={() => setWorkspaceOpen(true)}
+                className="font-trading text-base truncate hover:text-primary transition-colors cursor-pointer flex items-center gap-1 group/title"
+                title="Ouvrir le Mission Workspace"
+              >
+                {mission.title}
+                <ExternalLink className="h-3 w-3 opacity-0 group-hover/title:opacity-100 transition-opacity" />
+              </button>
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (
                 <div className="flex items-center gap-1">
@@ -448,6 +458,14 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mission Workspace Dialog */}
+      <MissionWorkspaceDialog
+        mission={mission}
+        open={workspaceOpen}
+        onOpenChange={setWorkspaceOpen}
+        projectId={mission.project_id}
+      />
     </div>
   );
 }
