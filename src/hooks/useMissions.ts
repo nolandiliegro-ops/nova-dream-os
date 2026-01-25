@@ -241,6 +241,7 @@ export function useMissionsWithProgress(projectId: string | undefined) {
           status: task.status as "todo" | "in_progress" | "completed",
           mode: task.mode as "work" | "personal",
           subtasks: (Array.isArray(task.subtasks) ? task.subtasks : []) as unknown as Task["subtasks"],
+          required_tools: (Array.isArray(task.required_tools) ? task.required_tools : []) as string[],
         }));
 
         return {

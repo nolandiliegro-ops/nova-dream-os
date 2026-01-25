@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { GlassCard } from "./GlassCard";
 import { useMode } from "@/contexts/ModeContext";
-import { useTodayMissions, useWeeklyMissions, parseDurationToMinutes, formatMinutesToDisplay } from "@/hooks/useMissions";
+import { useTodayMissions, parseDurationToMinutes, formatMinutesToDisplay } from "@/hooks/useMissions";
 import { useUserGoals } from "@/hooks/useUserGoals";
+import { useWeeklyTaskLoad, DayLoadWithTasks } from "@/hooks/useWeeklyTaskLoad";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Sun, Timer, CheckCircle2, Loader2, Target, Sparkles, AlertTriangle, Play, Pause } from "lucide-react";
@@ -41,19 +42,37 @@ const triggerDailyCelebration = () => {
   frame();
 };
 
-// Custom tooltip for the weekly chart
+// Custom tooltip for the weekly chart - now shows individual tasks
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
+    const data = payload[0].payload as DayLoadWithTasks;
     return (
-      <div className="glass-card px-3 py-2 text-xs">
-        <p className="font-medium">{data.date}</p>
+      <div className="glass-card px-3 py-2 text-xs max-w-[220px] border border-border/50 shadow-lg">
+        <p className="font-medium mb-1">{data.date}</p>
         <p className={cn(
-          "font-trading",
+          "font-trading mb-2",
           data.isOverloaded ? "text-destructive" : "text-primary"
         )}>
-          {data.hours}h ({data.missionCount} mission{data.missionCount > 1 ? "s" : ""})
+          {formatMinutesToDisplay(data.minutes)} ({data.taskCount} tâche{data.taskCount > 1 ? "s" : ""})
         </p>
+        {data.tasks.length > 0 && (
+          <div className="space-y-1 pt-2 border-t border-border/50">
+            {data.tasks.slice(0, 5).map(task => (
+              <div key={task.id} className="flex justify-between gap-2">
+                <span className="truncate text-muted-foreground">{task.title}</span>
+                <span className="flex-shrink-0 font-trading">{formatMinutesToDisplay(task.estimatedTime)}</span>
+              </div>
+            ))}
+            {data.tasks.length > 5 && (
+              <p className="text-muted-foreground text-center pt-1">
+                +{data.tasks.length - 5} autre{data.tasks.length - 5 > 1 ? "s" : ""}...
+              </p>
+            )}
+          </div>
+        )}
+        {data.tasks.length === 0 && (
+          <p className="text-muted-foreground italic">Aucune tâche prévue</p>
+        )}
       </div>
     );
   }
@@ -66,7 +85,7 @@ export function DailyBriefingWidget() {
   const dailyCapacity = goals?.daily_focus_capacity || 360;
   
   const { data: todayMissions, isLoading } = useTodayMissions(mode);
-  const { data: weeklyData } = useWeeklyMissions(mode, dailyCapacity);
+  const { data: weeklyTaskData } = useWeeklyTaskLoad(mode, dailyCapacity);
   const [celebrated, setCelebrated] = useState(false);
   const { state: timerState, startTimer, pauseTimer, resumeTimer } = useMissionTimer();
 
@@ -235,15 +254,15 @@ export function DailyBriefingWidget() {
               </div>
             )}
 
-            {/* Weekly Load Chart */}
-            {weeklyData && weeklyData.length > 0 && (
+            {/* Weekly Load Chart - Now based on individual tasks! */}
+            {weeklyTaskData && weeklyTaskData.length > 0 && (
               <div className="pt-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Charge des 7 prochains jours
+                  Charge des 7 prochains jours (par tâches)
                 </p>
                 <div className="h-16">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyData} barCategoryGap="20%">
+                    <BarChart data={weeklyTaskData} barCategoryGap="20%">
                       <XAxis 
                         dataKey="day" 
                         tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -255,7 +274,7 @@ export function DailyBriefingWidget() {
                         dataKey="hours" 
                         radius={[4, 4, 0, 0]}
                       >
-                        {weeklyData.map((entry, index) => (
+                        {weeklyTaskData.map((entry, index) => (
                           <Cell 
                             key={`cell-${index}`}
                             fill={entry.isOverloaded ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}

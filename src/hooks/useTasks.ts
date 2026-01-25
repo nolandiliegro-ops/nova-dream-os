@@ -23,6 +23,7 @@ export interface Task {
   time_spent: number; // minutes
   mode: "work" | "personal";
   subtasks: Subtask[];
+  required_tools: string[]; // V4.2: tools needed for this task
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +50,7 @@ export function useTasks(mode?: "work" | "personal") {
       return (data || []).map((task) => ({
         ...task,
         subtasks: (Array.isArray(task.subtasks) ? task.subtasks : []) as unknown as Subtask[],
+        required_tools: (Array.isArray(task.required_tools) ? task.required_tools : []) as string[],
       })) as Task[];
     },
     enabled: !!user,
@@ -71,6 +73,7 @@ export function useTasksByProject(projectId: string | undefined) {
       return (data || []).map((task) => ({
         ...task,
         subtasks: (Array.isArray(task.subtasks) ? task.subtasks : []) as unknown as Subtask[],
+        required_tools: (Array.isArray(task.required_tools) ? task.required_tools : []) as string[],
       })) as Task[];
     },
     enabled: !!user && !!projectId,
@@ -227,6 +230,7 @@ export function useTasksByMission(missionId: string | undefined) {
       return (data || []).map((task) => ({
         ...task,
         subtasks: (Array.isArray(task.subtasks) ? task.subtasks : []) as unknown as Subtask[],
+        required_tools: (Array.isArray(task.required_tools) ? task.required_tools : []) as string[],
       })) as Task[];
     },
     enabled: !!user && !!missionId,

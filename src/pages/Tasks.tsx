@@ -158,6 +158,7 @@ export default function Tasks() {
         time_spent: 0,
         mode: mode,
         subtasks: [],
+        required_tools: [],
       });
       toast.success("Tâche créée !");
       setIsTaskDialogOpen(false);

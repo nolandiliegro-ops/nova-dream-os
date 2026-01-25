@@ -304,6 +304,7 @@ export type Database = {
           mode: string
           priority: string
           project_id: string | null
+          required_tools: Json | null
           status: string
           subtasks: Json | null
           time_spent: number
@@ -322,6 +323,7 @@ export type Database = {
           mode?: string
           priority?: string
           project_id?: string | null
+          required_tools?: Json | null
           status?: string
           subtasks?: Json | null
           time_spent?: number
@@ -340,6 +342,7 @@ export type Database = {
           mode?: string
           priority?: string
           project_id?: string | null
+          required_tools?: Json | null
           status?: string
           subtasks?: Json | null
           time_spent?: number
