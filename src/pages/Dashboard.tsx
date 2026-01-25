@@ -8,6 +8,7 @@ import { Goal100kWidget } from "@/components/dashboard/Goal100kWidget";
 import { MissionFocusWidget } from "@/components/dashboard/MissionFocusWidget";
 import { StrategicCalendarWidget } from "@/components/dashboard/StrategicCalendarWidget";
 import { HabitTrackerWidget } from "@/components/dashboard/HabitTrackerWidget";
+import { DailyBriefingWidget } from "@/components/dashboard/DailyBriefingWidget";
 import { DraggableWidgetWrapper } from "@/components/dashboard/DraggableWidgetWrapper";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
@@ -33,6 +34,12 @@ interface WidgetConfig {
 }
 
 const WIDGET_REGISTRY: Record<string, WidgetConfig> = {
+  briefing: {
+    id: "briefing",
+    component: DailyBriefingWidget,
+    colSpan: { mobile: 1, tablet: 2, desktop: 2 },
+    label: "Briefing du Jour",
+  },
   revenue: {
     id: "revenue",
     component: RevenueWidget,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 export const DEFAULT_WIDGET_ORDER = [
+  "briefing",
   "revenue",
   "projects", 
   "deadlines",

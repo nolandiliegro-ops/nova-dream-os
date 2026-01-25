@@ -32,6 +32,7 @@ export function AddMissionDialog({ projectId, mode, open, onOpenChange }: AddMis
         status: "pending",
         order_index: 0,
         deadline: null,
+        estimated_duration: null,
       });
 
       toast.success("Mission créée !");
