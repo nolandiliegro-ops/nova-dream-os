@@ -50,7 +50,14 @@ import {
   type Document,
 } from "@/hooks/useDocuments";
 
-// Work document folders
+import {
+  WORK_SEGMENTS as WORK_SEGMENTS_CONFIG,
+  PERSONAL_SEGMENTS as PERSONAL_SEGMENTS_CONFIG,
+  getSegmentsForMode,
+  getDefaultSegmentForMode,
+} from "@/config/segments";
+
+// Transform config segments to document format
 const WORK_SEGMENTS = [
   { id: "ecommerce", label: "E-commerce", color: "segment-ecommerce" },
   { id: "tiktok", label: "TikTok", color: "segment-tiktok" },
@@ -59,10 +66,9 @@ const WORK_SEGMENTS = [
   { id: "other", label: "Autre", color: "muted-foreground" },
 ];
 
-// Personal document folders
 const PERSONAL_SEGMENTS = [
-  { id: "wellness", label: "Santé", color: "segment-data" },
-  { id: "hobby", label: "Loisirs", color: "segment-oracle" },
+  { id: "wellness", label: "Bien-être", color: "segment-data" },
+  { id: "hobby", label: "Hobbies", color: "segment-oracle" },
   { id: "travel", label: "Voyages", color: "segment-consulting" },
   { id: "other", label: "Autre", color: "muted-foreground" },
 ];

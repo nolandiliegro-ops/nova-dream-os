@@ -22,55 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-// Work segments
-const WORK_SEGMENTS = [
-  { value: "ecommerce", label: "E-commerce" },
-  { value: "tiktok", label: "TikTok" },
-  { value: "consulting", label: "Consulting" },
-  { value: "oracle", label: "Oracle" },
-  { value: "data", label: "Les Enquêtes" },
-  { value: "tech", label: "Dream App" },
-  { value: "other", label: "Autre" },
-];
-
-// Personal segments
-const PERSONAL_SEGMENTS = [
-  { value: "hobby", label: "Hobbies" },
-  { value: "wellness", label: "Bien-être" },
-  { value: "travel", label: "Voyages" },
-  { value: "other", label: "Autre" },
-];
-
-const segmentColors: Record<string, string> = {
-  // Work
-  ecommerce: "border-segment-ecommerce text-segment-ecommerce",
-  tiktok: "border-segment-tiktok text-segment-tiktok",
-  consulting: "border-segment-consulting text-segment-consulting",
-  oracle: "border-segment-oracle text-segment-oracle",
-  data: "border-segment-data text-segment-data",
-  tech: "border-segment-tech text-segment-tech",
-  // Personal
-  hobby: "border-segment-oracle text-segment-oracle",
-  wellness: "border-segment-data text-segment-data",
-  travel: "border-segment-consulting text-segment-consulting",
-  other: "border-muted-foreground text-muted-foreground",
-};
-
-const segmentBgColors: Record<string, string> = {
-  // Work
-  ecommerce: "bg-segment-ecommerce/20",
-  tiktok: "bg-segment-tiktok/20",
-  consulting: "bg-segment-consulting/20",
-  oracle: "bg-segment-oracle/20",
-  data: "bg-segment-data/20",
-  tech: "bg-segment-tech/20",
-  // Personal
-  hobby: "bg-segment-oracle/20",
-  wellness: "bg-segment-data/20",
-  travel: "bg-segment-consulting/20",
-  other: "bg-muted",
-};
+import {
+  WORK_SEGMENTS,
+  PERSONAL_SEGMENTS,
+  SEGMENT_BORDER_COLORS,
+  SEGMENT_BG_COLORS,
+  getSegmentsForMode,
+  getDefaultSegmentForMode,
+} from "@/config/segments";
 
 const statusConfig = {
   planned: { label: "Planifié", icon: Clock, color: "text-muted-foreground" },
@@ -419,13 +378,14 @@ export default function Projects() {
                   key={project.id} 
                   className={cn(
                     "p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02]",
-                    segmentColors[project.segment]
+                    SEGMENT_BORDER_COLORS[project.segment] || SEGMENT_BORDER_COLORS.other,
+                    `text-${project.segment === 'other' ? 'muted-foreground' : `segment-${project.segment}`}`
                   )}
                   onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className={cn("rounded-lg p-2", segmentBgColors[project.segment])}>
-                      <FolderKanban className={cn("h-5 w-5", segmentColors[project.segment].split(" ")[1])} />
+                    <div className={cn("rounded-lg p-2", SEGMENT_BG_COLORS[project.segment] || SEGMENT_BG_COLORS.other)}>
+                      <FolderKanban className="h-5 w-5" />
                     </div>
                     <div className={cn("flex items-center gap-1 text-xs", statusConfig[project.status].color)}>
                       <StatusIcon className="h-3 w-3" />

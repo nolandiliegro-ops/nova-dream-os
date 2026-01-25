@@ -7,6 +7,7 @@ import { ToolsWidget } from "@/components/dashboard/ToolsWidget";
 import { Goal100kWidget } from "@/components/dashboard/Goal100kWidget";
 import { MissionFocusWidget } from "@/components/dashboard/MissionFocusWidget";
 import { StrategicCalendarWidget } from "@/components/dashboard/StrategicCalendarWidget";
+import { HabitTrackerWidget } from "@/components/dashboard/HabitTrackerWidget";
 import { DraggableWidgetWrapper } from "@/components/dashboard/DraggableWidgetWrapper";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
@@ -28,6 +29,7 @@ interface WidgetConfig {
   };
   rowSpan?: number;
   label: string;
+  modeRestriction?: "work" | "personal"; // Only show in specific mode
 }
 
 const WIDGET_REGISTRY: Record<string, WidgetConfig> = {
@@ -73,6 +75,13 @@ const WIDGET_REGISTRY: Record<string, WidgetConfig> = {
     component: MissionFocusWidget,
     colSpan: { mobile: 1, tablet: 2, desktop: 2 },
     label: "Focus Missions",
+  },
+  habits: {
+    id: "habits",
+    component: HabitTrackerWidget,
+    colSpan: { mobile: 1, tablet: 2, desktop: 2 },
+    label: "Habitudes",
+    modeRestriction: "personal", // Only visible in personal mode
   },
   tasks: {
     id: "tasks",
@@ -190,6 +199,11 @@ export default function Dashboard() {
           {widgetOrder.map((widgetId, index) => {
             const config = WIDGET_REGISTRY[widgetId];
             if (!config) return null;
+
+            // Skip widget if mode restriction doesn't match
+            if (config.modeRestriction && config.modeRestriction !== mode) {
+              return null;
+            }
 
             const Component = config.component;
             const colSpanClass = getColSpanClass(config);

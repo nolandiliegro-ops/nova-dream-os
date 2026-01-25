@@ -14,22 +14,10 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
-const segmentLabels: Record<string, string> = {
-  // Work
-  ecommerce: "E-commerce",
-  tiktok: "TikTok",
-  consulting: "Consulting",
-  oracle: "Oracle",
-  data: "Les Enquêtes",
-  tech: "Dream App",
-  // Personal
-  hobby: "Hobbies",
-  wellness: "Bien-être",
-  travel: "Voyages",
-  other: "Autre",
-};
+import { SEGMENT_LABELS, getSegmentLabel } from "@/config/segments";
 
-const segmentColors: Record<string, string> = {
+// Badge colors for mission segments (slightly different from icon colors)
+const segmentBadgeColors: Record<string, string> = {
   // Work
   ecommerce: "bg-segment-ecommerce/20 text-segment-ecommerce border-segment-ecommerce/30",
   tiktok: "bg-segment-tiktok/20 text-segment-tiktok border-segment-tiktok/30",
@@ -155,9 +143,9 @@ export function MissionFocusWidget() {
                   />
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full border",
-                    segmentColors[mission.projectSegment] || segmentColors.other
+                    segmentBadgeColors[mission.projectSegment] || segmentBadgeColors.other
                   )}>
-                    {segmentLabels[mission.projectSegment] || "Autre"}
+                    {getSegmentLabel(mission.projectSegment)}
                   </span>
                   <div 
                     className="flex-1 flex items-center justify-end cursor-pointer"

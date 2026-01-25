@@ -8,6 +8,7 @@ export const DEFAULT_WIDGET_ORDER = [
   "tools",
   "calendar",
   "focus",
+  "habits",
   "tasks",
 ];
 
