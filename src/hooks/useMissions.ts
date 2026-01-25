@@ -14,6 +14,8 @@ export interface Mission {
   order_index: number;
   deadline: string | null;
   estimated_duration: string | null;
+  is_focus: boolean;
+  time_spent: number;
   created_at: string;
   updated_at: string;
 }
@@ -28,7 +30,9 @@ export interface MissionWithProgress extends Mission {
 export interface FocusMission extends MissionWithProgress {
   projectName: string;
   projectSegment: string;
+  project_id: string;
   inProgressTasksCount: number;
+  is_focus: boolean;
 }
 
 export type MissionInsert = Omit<Mission, "id" | "created_at" | "updated_at">;
@@ -165,20 +169,32 @@ export function useGlobalFocusMissions(mode: "work" | "personal") {
             tasks: [],
             projectName: project?.name || "Projet inconnu",
             projectSegment: project?.segment || "other",
+            project_id: mission.project_id,
             inProgressTasksCount: inProgressTasks,
+            is_focus: mission.is_focus ?? false,
           };
         })
         // Filter: ALL non-completed missions (even at 0%)
         .filter((m) => m.status !== "completed" && m.progress < 100)
-        // Sort by in_progress tasks count (desc), then by progress (desc)
+        // Sort: is_focus first, then by deadline, then by in_progress tasks count
         .sort((a, b) => {
+          // 1. is_focus missions first
+          if (a.is_focus && !b.is_focus) return -1;
+          if (!a.is_focus && b.is_focus) return 1;
+          
+          // 2. By deadline (closest first)
+          if (a.deadline && b.deadline) {
+            return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+          }
+          if (a.deadline && !b.deadline) return -1;
+          if (!a.deadline && b.deadline) return 1;
+          
+          // 3. By in_progress tasks count
           if (b.inProgressTasksCount !== a.inProgressTasksCount) {
             return b.inProgressTasksCount - a.inProgressTasksCount;
           }
           return b.progress - a.progress;
-        })
-        // Take top 5 for better visibility
-        .slice(0, 5);
+        });
 
       return focusMissions;
     },

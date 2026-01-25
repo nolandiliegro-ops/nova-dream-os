@@ -33,6 +33,8 @@ export function AddMissionDialog({ projectId, mode, open, onOpenChange }: AddMis
         order_index: 0,
         deadline: null,
         estimated_duration: null,
+        is_focus: false,
+        time_spent: 0,
       });
 
       toast.success("Mission créée !");
