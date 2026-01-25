@@ -143,7 +143,7 @@ export type Database = {
           id: string
           is_focus: boolean
           order_index: number
-          project_id: string
+          project_id: string | null
           status: string
           time_spent: number
           title: string
@@ -158,7 +158,7 @@ export type Database = {
           id?: string
           is_focus?: boolean
           order_index?: number
-          project_id: string
+          project_id?: string | null
           status?: string
           time_spent?: number
           title: string
@@ -173,7 +173,7 @@ export type Database = {
           id?: string
           is_focus?: boolean
           order_index?: number
-          project_id?: string
+          project_id?: string | null
           status?: string
           time_spent?: number
           title?: string

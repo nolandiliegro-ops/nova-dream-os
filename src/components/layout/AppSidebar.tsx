@@ -34,7 +34,7 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Finances", url: "/finances", icon: Wallet },
   { title: "Projets", url: "/projects", icon: FolderKanban },
-  { title: "Tâches", url: "/tasks", icon: CheckSquare },
+  { title: "Tâches & Missions", url: "/tasks", icon: CheckSquare },
   { title: "Assistant IA", url: "/assistant", icon: Bot },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Paramètres", url: "/settings", icon: Settings },

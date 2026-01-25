@@ -6,7 +6,7 @@ import { format, addDays } from "date-fns";
 
 export interface Mission {
   id: string;
-  project_id: string;
+  project_id: string | null; // V4.1: now nullable for orphan missions
   user_id: string;
   title: string;
   description: string | null;
@@ -25,12 +25,14 @@ export interface MissionWithProgress extends Mission {
   completedTasks: number;
   totalTasks: number;
   tasks: Task[];
+  projectName?: string | null;
+  projectSegment?: string | null;
 }
 
 export interface FocusMission extends MissionWithProgress {
-  projectName: string;
-  projectSegment: string;
-  project_id: string;
+  projectName: string | null;
+  projectSegment: string | null;
+  project_id: string | null;
   inProgressTasksCount: number;
   is_focus: boolean;
 }
@@ -284,17 +286,20 @@ export function useCreateMission() {
     mutationFn: async (mission: Omit<MissionInsert, "user_id">) => {
       if (!user) throw new Error("User not authenticated");
 
-      // Get the next order index
-      const { data: existingMissions } = await supabase
-        .from("missions")
-        .select("order_index")
-        .eq("project_id", mission.project_id)
-        .order("order_index", { ascending: false })
-        .limit(1);
+      // Get the next order index (handle orphan missions)
+      let nextOrderIndex = 0;
+      if (mission.project_id) {
+        const { data: existingMissions } = await supabase
+          .from("missions")
+          .select("order_index")
+          .eq("project_id", mission.project_id)
+          .order("order_index", { ascending: false })
+          .limit(1);
 
-      const nextOrderIndex = existingMissions && existingMissions.length > 0
-        ? existingMissions[0].order_index + 1
-        : 0;
+        nextOrderIndex = existingMissions && existingMissions.length > 0
+          ? existingMissions[0].order_index + 1
+          : 0;
+      }
 
       const { data, error } = await supabase
         .from("missions")
@@ -310,8 +315,11 @@ export function useCreateMission() {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["missions", variables.project_id] });
-      queryClient.invalidateQueries({ queryKey: ["missions", "withProgress", variables.project_id] });
+      queryClient.invalidateQueries({ queryKey: ["missions"] });
+      if (variables.project_id) {
+        queryClient.invalidateQueries({ queryKey: ["missions", variables.project_id] });
+        queryClient.invalidateQueries({ queryKey: ["missions", "withProgress", variables.project_id] });
+      }
     },
   });
 }
