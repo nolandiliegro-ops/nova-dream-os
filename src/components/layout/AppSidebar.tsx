@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
+import { GlobalCreateMenu } from "./GlobalCreateMenu";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -52,14 +53,17 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary glow-primary">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary glow-primary">
+              <Sparkles className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold text-sidebar-foreground">Nova</span>
+              <span className="text-xs text-sidebar-foreground/60">Life OS</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold text-sidebar-foreground">Nova</span>
-            <span className="text-xs text-sidebar-foreground/60">Life OS</span>
-          </div>
+          <GlobalCreateMenu />
         </div>
         <PomodoroTimer />
       </SidebarHeader>

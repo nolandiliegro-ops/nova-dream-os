@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { GlassCard } from "./GlassCard";
 import { useMode } from "@/contexts/ModeContext";
-import { useGlobalFocusMissions, useCompleteMission, useUpdateMission } from "@/hooks/useMissions";
+import { useGlobalFocusMissions, useCompleteMission, useUpdateMission, FocusMission } from "@/hooks/useMissions";
 import { useProjects } from "@/hooks/useProjects";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,9 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Target, ChevronRight, Loader2, Plus, CalendarDays, Star, ArrowUpDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { AddGlobalMissionDialog } from "./AddGlobalMissionDialog";
+import { MissionWorkspaceDialog } from "@/components/project-workspace/MissionWorkspaceDialog";
 import { format, differenceInHours, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -87,7 +87,10 @@ export function MissionFocusWidget() {
   const { data: projects } = useProjects(mode);
   const completeMission = useCompleteMission();
   const updateMission = useUpdateMission();
-  const navigate = useNavigate();
+  
+  // Mission workspace dialog state
+  const [selectedMission, setSelectedMission] = useState<FocusMission | null>(null);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   
   // Filter state
@@ -132,8 +135,9 @@ export function MissionFocusWidget() {
     return result;
   }, [focusMissions, projectFilter, sortBy]);
 
-  const handleMissionClick = (projectId: string) => {
-    navigate(`/projects/${projectId}?tab=roadmap`);
+  const handleMissionClick = (mission: FocusMission) => {
+    setSelectedMission(mission);
+    setWorkspaceOpen(true);
   };
 
   const handleCheckChange = async (missionId: string, checked: boolean) => {
@@ -264,7 +268,7 @@ export function MissionFocusWidget() {
                   </span>
                   <div 
                     className="flex-1 flex items-center justify-end cursor-pointer"
-                    onClick={() => handleMissionClick(mission.project_id)}
+                    onClick={() => handleMissionClick(mission)}
                   >
                     <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
@@ -273,7 +277,7 @@ export function MissionFocusWidget() {
                 {/* Clickable content area */}
                 <div 
                   className="cursor-pointer"
-                  onClick={() => handleMissionClick(mission.project_id)}
+                  onClick={() => handleMissionClick(mission)}
                 >
                   {/* Project Name */}
                   <p className="text-xs text-muted-foreground truncate mb-1">
@@ -349,6 +353,14 @@ export function MissionFocusWidget() {
       </GlassCard>
 
       <AddGlobalMissionDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      
+      {/* Mission Workspace Dialog */}
+      <MissionWorkspaceDialog
+        mission={selectedMission}
+        open={workspaceOpen}
+        onOpenChange={setWorkspaceOpen}
+        projectId={selectedMission?.project_id}
+      />
     </>
   );
 }

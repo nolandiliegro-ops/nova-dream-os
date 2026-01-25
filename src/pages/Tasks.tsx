@@ -21,6 +21,7 @@ import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdate
 import { useProjects } from "@/hooks/useProjects";
 import { useMissions, useUpdateMission, useCreateMission, useDeleteMission, useCompleteMission, Mission } from "@/hooks/useMissions";
 import { useAllMissions, useMissionStats, MissionWithContext } from "@/hooks/useAllMissions";
+import { MissionWorkspaceDialog } from "@/components/project-workspace/MissionWorkspaceDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -71,6 +72,8 @@ export default function Tasks() {
   const [isMissionDialogOpen, setIsMissionDialogOpen] = useState(false);
   const [deleteMissionConfirmOpen, setDeleteMissionConfirmOpen] = useState(false);
   const [missionToDelete, setMissionToDelete] = useState<string | null>(null);
+  const [selectedMissionForWorkspace, setSelectedMissionForWorkspace] = useState<MissionWithContext | null>(null);
+  const [missionWorkspaceOpen, setMissionWorkspaceOpen] = useState(false);
 
   // Task form
   const [taskForm, setTaskForm] = useState({
@@ -497,6 +500,7 @@ export default function Tasks() {
                     onToggleFocus={() => handleToggleMissionFocus(mission)}
                     onDateChange={(date) => handleMissionDateChange(mission.id, date)}
                     onDelete={() => { setMissionToDelete(mission.id); setDeleteMissionConfirmOpen(true); }}
+                    onTitleClick={() => { setSelectedMissionForWorkspace(mission); setMissionWorkspaceOpen(true); }}
                   />
                 ))}
               </div>
@@ -799,6 +803,14 @@ export default function Tasks() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Mission Workspace Dialog */}
+        <MissionWorkspaceDialog
+          mission={selectedMissionForWorkspace}
+          open={missionWorkspaceOpen}
+          onOpenChange={setMissionWorkspaceOpen}
+          projectId={selectedMissionForWorkspace?.project_id}
+        />
       </div>
     </DashboardLayout>
   );
@@ -812,9 +824,10 @@ interface MissionRowProps {
   onToggleFocus: () => void;
   onDateChange: (date: Date | undefined) => void;
   onDelete: () => void;
+  onTitleClick?: () => void;
 }
 
-function MissionRow({ mission, onToggleComplete, onToggleFocus, onDateChange, onDelete }: MissionRowProps) {
+function MissionRow({ mission, onToggleComplete, onToggleFocus, onDateChange, onDelete, onTitleClick }: MissionRowProps) {
   const isCompleted = mission.status === "completed";
   
   return (
@@ -836,7 +849,12 @@ function MissionRow({ mission, onToggleComplete, onToggleFocus, onDateChange, on
       </button>
       
       <div className="flex-1 min-w-0">
-        <p className={cn("font-medium text-sm truncate", isCompleted && "line-through")}>{mission.title}</p>
+        <button 
+          onClick={onTitleClick}
+          className={cn("font-medium text-sm truncate text-left hover:text-primary transition-colors", isCompleted && "line-through")}
+        >
+          {mission.title}
+        </button>
         <p className="text-xs text-muted-foreground truncate">
           {mission.projectName || "Sans projet"}
           {mission.totalTasks > 0 && ` • ${mission.completedTasks}/${mission.totalTasks} tâches`}
