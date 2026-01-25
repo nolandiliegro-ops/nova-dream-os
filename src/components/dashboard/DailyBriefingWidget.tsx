@@ -1,19 +1,19 @@
 import { useEffect, useState, useMemo } from "react";
 import { GlassCard } from "./GlassCard";
 import { useMode } from "@/contexts/ModeContext";
-import { useTodayMissions, parseDurationToMinutes, formatMinutesToDisplay } from "@/hooks/useMissions";
+import { formatMinutesToDisplay } from "@/hooks/useMissions";
 import { useUserGoals } from "@/hooks/useUserGoals";
 import { useWeeklyTaskLoad, DayLoadWithTasks } from "@/hooks/useWeeklyTaskLoad";
+import { useDailyActionPlan } from "@/hooks/useDailyActionPlan";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { Sun, Timer, CheckCircle2, Loader2, Target, Sparkles, AlertTriangle, Play, Pause } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Sun, Loader2, Sparkles, AlertTriangle, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts";
-import { useMissionTimer } from "@/contexts/MissionTimerContext";
+import { TaskGroupSection } from "./TaskGroupSection";
 
-// Daily completion celebration - more intense!
+// Daily completion celebration
 const triggerDailyCelebration = () => {
   const duration = 4000;
   const end = Date.now() + duration;
@@ -42,7 +42,7 @@ const triggerDailyCelebration = () => {
   frame();
 };
 
-// Custom tooltip for the weekly chart - now shows individual tasks
+// Custom tooltip for the weekly chart
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload as DayLoadWithTasks;
@@ -84,72 +84,39 @@ export function DailyBriefingWidget() {
   const { data: goals } = useUserGoals(2026, mode);
   const dailyCapacity = goals?.daily_focus_capacity || 360;
   
-  const { data: todayMissions, isLoading } = useTodayMissions(mode);
+  const { data: actionPlan, isLoading } = useDailyActionPlan(mode, dailyCapacity);
   const { data: weeklyTaskData } = useWeeklyTaskLoad(mode, dailyCapacity);
   const [celebrated, setCelebrated] = useState(false);
-  const { state: timerState, startTimer, pauseTimer, resumeTimer } = useMissionTimer();
 
-  // Calculate totals
-  const totalMinutes = todayMissions?.reduce(
-    (sum, m) => sum + parseDurationToMinutes(m.estimated_duration),
-    0
-  ) || 0;
+  const {
+    totalMinutes,
+    completedMinutes,
+    progress,
+    taskCount,
+    completedCount,
+    isOverloaded,
+    groups,
+  } = actionPlan;
 
-  const completedMinutes = todayMissions?.filter(m => m.status === "completed")
-    .reduce((sum, m) => sum + parseDurationToMinutes(m.estimated_duration), 0) || 0;
-
-  const progress = totalMinutes > 0 ? (completedMinutes / totalMinutes) * 100 : 0;
-  const completedCount = todayMissions?.filter(m => m.status === "completed").length || 0;
-  const totalCount = todayMissions?.length || 0;
-
-  // Overload detection
-  const isOverloaded = totalMinutes > dailyCapacity;
   const overloadMinutes = totalMinutes - dailyCapacity;
-
-  // Sort missions: in_progress first, then by order_index
-  const sortedMissions = useMemo(() => {
-    if (!todayMissions) return [];
-    return [...todayMissions].sort((a, b) => {
-      // Completed missions at the end
-      if (a.status === "completed" && b.status !== "completed") return 1;
-      if (a.status !== "completed" && b.status === "completed") return -1;
-      // In progress first
-      if (a.status === "in_progress" && b.status !== "in_progress") return -1;
-      if (a.status !== "in_progress" && b.status === "in_progress") return 1;
-      // Then by order_index
-      return a.order_index - b.order_index;
-    });
-  }, [todayMissions]);
 
   // Trigger celebration when 100% completed
   useEffect(() => {
-    if (progress === 100 && totalMinutes > 0 && !celebrated) {
+    if (progress === 100 && taskCount > 0 && !celebrated) {
       triggerDailyCelebration();
       toast.success("🎉 Objectif du jour atteint ! Tu gères !");
       setCelebrated(true);
     }
-  }, [progress, totalMinutes, celebrated]);
+  }, [progress, taskCount, celebrated]);
 
-  // Reset celebration flag on new day
+  // Reset celebration flag on mode change
   useEffect(() => {
     setCelebrated(false);
   }, [mode]);
 
-  const handleTimerToggle = (mission: any) => {
-    const isThisMissionActive = timerState.missionId === mission.id;
-    
-    if (isThisMissionActive && timerState.isRunning) {
-      pauseTimer();
-    } else if (isThisMissionActive) {
-      resumeTimer();
-    } else {
-      startTimer(mission.id, mission.title, mission.estimated_duration);
-    }
-  };
-
   return (
     <GlassCard className="relative overflow-hidden">
-      {/* Gradient accent - changes based on overload status */}
+      {/* Gradient accent */}
       <div className={cn(
         "absolute inset-0 pointer-events-none",
         isOverloaded 
@@ -174,13 +141,13 @@ export function DailyBriefingWidget() {
               )}
             </div>
             <div>
-              <h3 className="text-sm font-medium">Briefing du Jour</h3>
+              <h3 className="text-sm font-medium">Plan du Jour</h3>
               <p className="text-xs text-muted-foreground">
                 {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
             </div>
           </div>
-          {progress === 100 && totalCount > 0 && (
+          {progress === 100 && taskCount > 0 && (
             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-segment-ecommerce/20 text-segment-ecommerce text-xs font-trading">
               <Sparkles className="h-3 w-3" />
               Terminé !
@@ -195,13 +162,14 @@ export function DailyBriefingWidget() {
           </div>
         )}
 
-        {/* Main message */}
+        {/* Main content */}
         {!isLoading && (
           <>
+            {/* Main message */}
             <div className="py-2">
-              {totalCount === 0 ? (
+              {taskCount === 0 ? (
                 <p className="text-lg font-trading text-muted-foreground">
-                  Nono, aucune mission prévue pour aujourd'hui
+                  Nono, aucune tâche prévue pour aujourd'hui
                 </p>
               ) : isOverloaded ? (
                 <div className="space-y-1">
@@ -210,7 +178,7 @@ export function DailyBriefingWidget() {
                     Attention Nono, journée surchargée !
                   </p>
                   <p className="text-sm text-destructive/80">
-                    {formatMinutesToDisplay(totalMinutes)} prévues vs {formatMinutesToDisplay(dailyCapacity)} de capacité 
+                    {formatMinutesToDisplay(totalMinutes)} en {taskCount} tâches vs {formatMinutesToDisplay(dailyCapacity)} de capacité 
                     <span className="font-trading ml-1">(+{formatMinutesToDisplay(overloadMinutes)})</span>
                   </p>
                 </div>
@@ -218,23 +186,22 @@ export function DailyBriefingWidget() {
                 <p className="text-lg font-trading">
                   Nono, aujourd'hui c'est{" "}
                   <span className="text-primary font-semibold">
-                    {totalMinutes >= 60 
-                      ? formatMinutesToDisplay(totalMinutes)
-                      : `${totalMinutes} min`
-                    }
+                    {formatMinutesToDisplay(totalMinutes)}
                   </span>
-                  {" "}de boulot !
+                  {" "}en{" "}
+                  <span className="text-primary font-semibold">{taskCount} tâche{taskCount > 1 ? "s" : ""}</span>
+                  {" "}!
                 </p>
               )}
             </div>
 
             {/* Progress bar */}
-            {totalCount > 0 && (
+            {taskCount > 0 && (
               <div className="space-y-2">
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {completedCount}/{totalCount} missions
+                    <ListChecks className="h-3 w-3" />
+                    {completedCount}/{taskCount} tâches
                   </span>
                   <span className="font-trading">
                     {formatMinutesToDisplay(completedMinutes)} / {formatMinutesToDisplay(totalMinutes)}
@@ -254,11 +221,11 @@ export function DailyBriefingWidget() {
               </div>
             )}
 
-            {/* Weekly Load Chart - Now based on individual tasks! */}
+            {/* Weekly Load Chart */}
             {weeklyTaskData && weeklyTaskData.length > 0 && (
               <div className="pt-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Charge des 7 prochains jours (par tâches)
+                  Charge des 7 prochains jours
                 </p>
                 <div className="h-16">
                   <ResponsiveContainer width="100%" height="100%">
@@ -285,90 +252,31 @@ export function DailyBriefingWidget() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                {/* Capacity line indicator */}
                 <p className="text-xs text-muted-foreground text-center mt-1">
                   Capacité : {formatMinutesToDisplay(dailyCapacity)}/jour
                 </p>
               </div>
             )}
 
-            {/* Mission list with play buttons */}
-            {totalCount > 0 && (
-              <div className="space-y-2 pt-2">
+            {/* Task groups */}
+            {taskCount > 0 && (
+              <div className="space-y-3 pt-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Missions du jour
+                  Tâches du jour
                 </p>
-                <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
-                  {sortedMissions.slice(0, 6).map((mission) => {
-                    const isCompleted = mission.status === "completed";
-                    const duration = mission.estimated_duration;
-                    const isThisMissionActive = timerState.missionId === mission.id;
-                    const isRunning = isThisMissionActive && timerState.isRunning;
-                    
-                    return (
-                      <div 
-                        key={mission.id}
-                        className={cn(
-                          "flex items-center justify-between gap-2 px-3 py-2 rounded-xl transition-colors group",
-                          isCompleted 
-                            ? "bg-segment-ecommerce/10 text-segment-ecommerce"
-                            : isThisMissionActive
-                              ? "bg-primary/20 ring-1 ring-primary/50"
-                              : "bg-muted/50 hover:bg-muted"
-                        )}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {isCompleted ? (
-                            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                "h-6 w-6 flex-shrink-0 rounded-full",
-                                isRunning 
-                                  ? "bg-primary/20 text-primary animate-pulse"
-                                  : "hover:bg-primary/20"
-                              )}
-                              onClick={() => handleTimerToggle(mission)}
-                            >
-                              {isRunning ? (
-                                <Pause className="h-3 w-3" />
-                              ) : (
-                                <Play className="h-3 w-3 text-primary" />
-                              )}
-                            </Button>
-                          )}
-                          <span className={cn(
-                            "text-sm truncate",
-                            isCompleted && "line-through opacity-70"
-                          )}>
-                            {mission.title}
-                          </span>
-                        </div>
-                        {duration && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-                            <Timer className="h-3 w-3" />
-                            <span className="font-trading">{duration}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {(sortedMissions.length || 0) > 6 && (
-                    <p className="text-xs text-muted-foreground text-center pt-1">
-                      + {sortedMissions.length - 6} autre(s) mission(s)...
-                    </p>
-                  )}
+                <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+                  {groups.map(group => (
+                    <TaskGroupSection key={group.groupKey} group={group} />
+                  ))}
                 </div>
               </div>
             )}
 
             {/* Empty state */}
-            {totalCount === 0 && (
+            {taskCount === 0 && (
               <div className="text-center py-4">
                 <p className="text-sm text-muted-foreground">
-                  Ajoute des missions avec deadlines aujourd'hui ou marque-les "en cours" !
+                  Planifie des tâches avec une date d'échéance aujourd'hui !
                 </p>
               </div>
             )}
