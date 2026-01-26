@@ -2,7 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { ModeSwitch } from "./ModeSwitch";
 import { ThemeToggle } from "./ThemeToggle";
-import { CeoScratchpad } from "./CeoScratchpad";
+import { MultiNotesPanel } from "./MultiNotesPanel";
 import { Bell, AlertTriangle, DollarSign, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -149,9 +149,9 @@ export function DashboardLayout({ children, hideSidebar = false, headerContent }
                       </SheetTitle>
                     </SheetHeader>
 
-                    {/* CEO Scratchpad */}
+                    {/* Multi-Notes Panel */}
                     <div className="mt-4">
-                      <CeoScratchpad />
+                      <MultiNotesPanel />
                     </div>
 
                     <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">

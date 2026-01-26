@@ -9,6 +9,7 @@ import { MissionFocusWidget } from "@/components/dashboard/MissionFocusWidget";
 import { StrategicCalendarWidget } from "@/components/dashboard/StrategicCalendarWidget";
 import { HabitTrackerWidget } from "@/components/dashboard/HabitTrackerWidget";
 import { DailyBriefingWidget } from "@/components/dashboard/DailyBriefingWidget";
+import { PinnedNotesWidget } from "@/components/dashboard/PinnedNotesWidget";
 import { DraggableWidgetWrapper } from "@/components/dashboard/DraggableWidgetWrapper";
 import { useMode } from "@/contexts/ModeContext";
 import { useRealtimeTransactions } from "@/hooks/useRealtimeTransactions";
@@ -89,6 +90,12 @@ const WIDGET_REGISTRY: Record<string, WidgetConfig> = {
     colSpan: { mobile: 1, tablet: 2, desktop: 2 },
     label: "Habitudes",
     modeRestriction: "personal", // Only visible in personal mode
+  },
+  pinnedNotes: {
+    id: "pinnedNotes",
+    component: PinnedNotesWidget,
+    colSpan: { mobile: 1, tablet: 2, desktop: 2 },
+    label: "Notes Épinglées",
   },
   tasks: {
     id: "tasks",
