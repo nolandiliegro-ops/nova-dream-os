@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { AutomationsSection } from "@/components/settings/AutomationsSection";
 import { SegmentsManagerSection } from "@/components/settings/SegmentsManagerSection";
+import { HabitsSettingsSection } from "@/components/settings/HabitsSettingsSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -298,6 +299,9 @@ export default function Settings() {
 
         {/* Segments Manager Section */}
         <SegmentsManagerSection />
+
+        {/* Habits Manager Section */}
+        <HabitsSettingsSection />
 
         {/* Automations Section */}
         <AutomationsSection
