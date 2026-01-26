@@ -60,15 +60,33 @@ export function useCreateDefaultHabits() {
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
 
-      const habitsToCreate = DEFAULT_HABITS.map((habit) => ({
-        user_id: user.id,
-        title: habit.title,
-        icon: habit.icon,
-        color: habit.color,
-        mode: "personal",
-        frequency: "daily",
-        completed_days: [],
-      }));
+      // Vérifier les habitudes existantes pour éviter les doublons
+      const { data: existingHabits, error: checkError } = await supabase
+        .from("habits")
+        .select("title")
+        .eq("user_id", user.id);
+
+      if (checkError) throw checkError;
+
+      const existingTitles = new Set(existingHabits?.map(h => h.title) || []);
+
+      // Ne créer que les habitudes qui n'existent pas encore
+      const habitsToCreate = DEFAULT_HABITS
+        .filter(habit => !existingTitles.has(habit.title))
+        .map((habit) => ({
+          user_id: user.id,
+          title: habit.title,
+          icon: habit.icon,
+          color: habit.color,
+          mode: "personal",
+          frequency: "daily",
+          completed_days: [],
+        }));
+
+      // Si toutes les habitudes existent déjà, ne rien faire
+      if (habitsToCreate.length === 0) {
+        return [];
+      }
 
       const { data, error } = await supabase
         .from("habits")
@@ -139,6 +157,19 @@ export function useCreateHabit() {
     mutationFn: async (habitData: { title: string; icon?: string; color?: string }) => {
       if (!user) throw new Error("Not authenticated");
 
+      // Vérification anti-doublon : vérifier si une habitude avec le même titre existe déjà
+      const { data: existingHabits, error: checkError } = await supabase
+        .from("habits")
+        .select("id, title")
+        .eq("user_id", user.id)
+        .eq("title", habitData.title);
+
+      if (checkError) throw checkError;
+
+      if (existingHabits && existingHabits.length > 0) {
+        throw new Error(`Une habitude "${habitData.title}" existe déjà`);
+      }
+
       const { data, error } = await supabase
         .from("habits")
         .insert({
@@ -160,8 +191,12 @@ export function useCreateHabit() {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       toast.success("Habitude créée !");
     },
-    onError: () => {
-      toast.error("Erreur lors de la création");
+    onError: (error: Error) => {
+      if (error.message.includes("existe déjà")) {
+        toast.error(error.message);
+      } else {
+        toast.error("Erreur lors de la création");
+      }
     },
   });
 }

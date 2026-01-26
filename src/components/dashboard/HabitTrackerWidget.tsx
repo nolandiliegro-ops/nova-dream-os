@@ -171,7 +171,7 @@ export function HabitTrackerWidget() {
           <Loader2 className="h-6 w-6 animate-spin text-segment-data" />
         </div>
       ) : (
-        <div className="flex-1 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-muted">
+        <div className="flex-1 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-muted">
           <div className="space-y-3">
             {/* Days header */}
             <div className="grid grid-cols-8 gap-1 sm:gap-2 sticky top-0 bg-inherit py-1">
