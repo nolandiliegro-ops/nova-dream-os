@@ -38,11 +38,7 @@ import { ProjectSettingsDialog } from "@/components/project-workspace/ProjectSet
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { Project } from "@/hooks/useProjects";
-import { 
-  getSegmentLabel, 
-  getSegmentColor, 
-  getSegmentBorderColor 
-} from "@/config/segments";
+import { useSegments, getSegmentLabel, getSegmentColor } from "@/hooks/useSegments";
 
 // Widget configuration registry
 interface ProjectWidgetConfig {
@@ -125,6 +121,7 @@ export default function ProjectWorkspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: project, isLoading } = useProject(id);
+  const { data: segments } = useSegments(project?.mode as "work" | "personal" | undefined);
   
   // Layout management hook
   const { 
@@ -298,8 +295,9 @@ export default function ProjectWorkspace() {
   }
 
   // Dynamic segment-based styling
-  const segmentColorClass = getSegmentColor(project.segment);
-  const segmentBorderClass = getSegmentBorderColor(project.segment);
+  const segmentColor = getSegmentColor(segments, project.segment);
+  const segmentStyle = { backgroundColor: segmentColor, color: "#fff" };
+  const segmentBorderStyle = { borderColor: segmentColor };
 
   // Focus mode header content
   const focusModeHeader = isFocusMode ? (
@@ -314,11 +312,11 @@ export default function ProjectWorkspace() {
         Quitter Focus
       </Button>
       <span className="font-medium">{project?.name}</span>
-      <span className={cn(
-        "px-2 py-0.5 rounded-full text-xs font-medium",
-        segmentColorClass
-      )}>
-        {getSegmentLabel(project?.segment || "other")}
+      <span 
+        className="px-2 py-0.5 rounded-full text-xs font-medium"
+        style={segmentStyle}
+      >
+        {getSegmentLabel(segments, project?.segment || "other")}
       </span>
     </div>
   ) : undefined;
@@ -343,11 +341,10 @@ export default function ProjectWorkspace() {
       <div className="space-y-6 animate-fade-in">
         {/* Sticky Header - hidden in focus mode */}
         {!isFocusMode && (
-          <div className={cn(
-            "sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 -mx-4 px-4 pt-4 -mt-4 border-b transition-colors duration-300",
-            segmentBorderClass,
-            "border-opacity-30"
-          )}>
+          <div 
+            className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 -mx-4 px-4 pt-4 -mt-4 border-b transition-colors duration-300 border-opacity-30"
+            style={segmentBorderStyle}
+          >
             {/* Navigation Row */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -421,11 +418,11 @@ export default function ProjectWorkspace() {
             {/* Title + Segment Badge */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
               <h1 className="text-2xl font-bold md:text-3xl">{project.name}</h1>
-              <span className={cn(
-                "px-3 py-1 rounded-full text-sm font-medium w-fit",
-                segmentColorClass
-              )}>
-                {getSegmentLabel(project.segment)}
+              <span 
+                className="px-3 py-1 rounded-full text-sm font-medium w-fit"
+                style={segmentStyle}
+              >
+                {getSegmentLabel(segments, project.segment)}
               </span>
             </div>
 
