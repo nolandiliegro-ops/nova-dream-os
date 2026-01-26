@@ -12,6 +12,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { 
   Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, 
   Trash2, X, Star, Target, CalendarIcon, MoreHorizontal
@@ -19,9 +21,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useTasks, useTaskStats, useCreateTask, useToggleTaskComplete, useUpdateTask, useDeleteTask, Task, Subtask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
-import { useMissions, useUpdateMission, useCreateMission, useDeleteMission, useCompleteMission, Mission } from "@/hooks/useMissions";
+import { useMissions, useUpdateMission, useCreateMission, useDeleteMission, useCompleteMission } from "@/hooks/useMissions";
 import { useAllMissions, useMissionStats, MissionWithContext } from "@/hooks/useAllMissions";
-import { MissionWorkspaceDialog } from "@/components/project-workspace/MissionWorkspaceDialog";
+import { MissionIntelPanel } from "@/components/tasks-hub/MissionIntelPanel";
+import { MissionRowCompact } from "@/components/tasks-hub/MissionRowCompact";
+import { TaskDetailDialog } from "@/components/shared/TaskDetailDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -39,7 +43,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -61,6 +64,9 @@ export default function Tasks() {
   const { mode } = useMode();
   const [activeTab, setActiveTab] = useState<"all" | "work" | "personal">("all");
   
+  // Master-Detail state
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
+  
   // Task dialogs
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
@@ -68,12 +74,14 @@ export default function Tasks() {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   
+  // Task Detail Portal
+  const [taskDetailOpen, setTaskDetailOpen] = useState(false);
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null);
+  
   // Mission dialogs
   const [isMissionDialogOpen, setIsMissionDialogOpen] = useState(false);
   const [deleteMissionConfirmOpen, setDeleteMissionConfirmOpen] = useState(false);
   const [missionToDelete, setMissionToDelete] = useState<string | null>(null);
-  const [selectedMissionForWorkspace, setSelectedMissionForWorkspace] = useState<MissionWithContext | null>(null);
-  const [missionWorkspaceOpen, setMissionWorkspaceOpen] = useState(false);
 
   // Task form
   const [taskForm, setTaskForm] = useState({
@@ -143,6 +151,12 @@ export default function Tasks() {
       return effectiveMode === activeTab;
     });
   }, [allMissions, activeTab]);
+
+  // Selected mission for Intel Panel
+  const selectedMission = useMemo(() => {
+    if (!selectedMissionId) return null;
+    return filteredMissions.find(m => m.id === selectedMissionId) || null;
+  }, [filteredMissions, selectedMissionId]);
 
   // Task handlers
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -331,17 +345,23 @@ export default function Tasks() {
     return mission?.title || null;
   };
 
+  // Handle task click from Intel Panel
+  const handleTaskClickFromPanel = (task: Task) => {
+    setSelectedTaskForDetail(task);
+    setTaskDetailOpen(true);
+  };
+
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6 animate-fade-in h-[calc(100vh-120px)]">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">
-              Tâches <span className="text-gradient">& Missions</span>
+              Mission <span className="text-gradient">Intel Hub</span>
             </h1>
             <p className="text-muted-foreground">
-              Centre de contrôle unifié pour organiser ta vie
+              Centre de pilotage analytique
             </p>
           </div>
           
@@ -411,225 +431,247 @@ export default function Tasks() {
           </GlassCard>
         </div>
 
-        {/* Two Column Layout */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* MISSIONS Column */}
-          <GlassCard className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Missions
-              </h3>
-              <Dialog open={isMissionDialogOpen} onOpenChange={setIsMissionDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    Mission
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Créer une mission</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateMission} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Titre</Label>
-                      <Input
-                        value={missionForm.title}
-                        onChange={(e) => setMissionForm({ ...missionForm, title: e.target.value })}
-                        placeholder="Ex: Refonte landing page"
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Projet (optionnel)</Label>
-                        <Select
-                          value={missionForm.project_id || "none"}
-                          onValueChange={(v) => setMissionForm({ ...missionForm, project_id: v === "none" ? "" : v })}
-                        >
-                          <SelectTrigger><SelectValue placeholder="Sans projet" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Sans projet</SelectItem>
-                            {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Deadline</Label>
-                        <Input
-                          type="date"
-                          value={missionForm.deadline}
-                          onChange={(e) => setMissionForm({ ...missionForm, deadline: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Durée estimée</Label>
-                      <Input
-                        value={missionForm.estimated_duration}
-                        onChange={(e) => setMissionForm({ ...missionForm, estimated_duration: e.target.value })}
-                        placeholder="Ex: 2h, 3j"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Input
-                        value={missionForm.description}
-                        onChange={(e) => setMissionForm({ ...missionForm, description: e.target.value })}
-                        placeholder="Description optionnelle"
-                      />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={createMission.isPending}>
-                      {createMission.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer la mission"}
+        {/* Master-Detail Layout */}
+        <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border bg-background/50">
+          {/* MASTER: Missions List */}
+          <ResizablePanel defaultSize={40} minSize={30}>
+            <div className="h-full flex flex-col">
+              {/* Mission Header */}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Missions ({filteredMissions.length})
+                </h3>
+                <Dialog open={isMissionDialogOpen} onOpenChange={setIsMissionDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1">
+                      <Plus className="h-4 w-4" />
                     </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {missionsLoading ? (
-              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : filteredMissions.length > 0 ? (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {filteredMissions.map((mission) => (
-                  <MissionRow
-                    key={mission.id}
-                    mission={mission}
-                    onToggleComplete={() => handleToggleMissionComplete(mission)}
-                    onToggleFocus={() => handleToggleMissionFocus(mission)}
-                    onDateChange={(date) => handleMissionDateChange(mission.id, date)}
-                    onDelete={() => { setMissionToDelete(mission.id); setDeleteMissionConfirmOpen(true); }}
-                    onTitleClick={() => { setSelectedMissionForWorkspace(mission); setMissionWorkspaceOpen(true); }}
-                  />
-                ))}
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Créer une mission</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateMission} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Titre</Label>
+                        <Input
+                          value={missionForm.title}
+                          onChange={(e) => setMissionForm({ ...missionForm, title: e.target.value })}
+                          placeholder="Ex: Refonte landing page"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Projet (optionnel)</Label>
+                          <Select
+                            value={missionForm.project_id || "none"}
+                            onValueChange={(v) => setMissionForm({ ...missionForm, project_id: v === "none" ? "" : v })}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Sans projet" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sans projet</SelectItem>
+                              {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Deadline</Label>
+                          <Input
+                            type="date"
+                            value={missionForm.deadline}
+                            onChange={(e) => setMissionForm({ ...missionForm, deadline: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Durée estimée</Label>
+                        <Input
+                          value={missionForm.estimated_duration}
+                          onChange={(e) => setMissionForm({ ...missionForm, estimated_duration: e.target.value })}
+                          placeholder="Ex: 2h, 3j"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Input
+                          value={missionForm.description}
+                          onChange={(e) => setMissionForm({ ...missionForm, description: e.target.value })}
+                          placeholder="Description optionnelle"
+                        />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={createMission.isPending}>
+                        {createMission.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer la mission"}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8 text-sm">
-                Aucune mission. Crée-en une !
-              </p>
-            )}
-          </GlassCard>
 
-          {/* TASKS Column */}
-          <GlassCard className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <CheckSquare className="h-4 w-4" />
-                Tâches
-              </h3>
-              <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    Tâche
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Créer une tâche</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateTask} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Titre</Label>
-                      <Input
-                        value={taskForm.title}
-                        onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                        placeholder="Ex: Finaliser mockups"
-                        required
+              {/* Missions List */}
+              <ScrollArea className="flex-1 p-2">
+                {missionsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : filteredMissions.length > 0 ? (
+                  <div className="space-y-1">
+                    {filteredMissions.map((mission) => (
+                      <MissionRowCompact
+                        key={mission.id}
+                        mission={mission}
+                        isSelected={selectedMissionId === mission.id}
+                        onSelect={() => setSelectedMissionId(mission.id)}
+                        onToggleComplete={() => handleToggleMissionComplete(mission)}
+                        onToggleFocus={() => handleToggleMissionFocus(mission)}
+                        onDateChange={(date) => handleMissionDateChange(mission.id, date)}
+                        onDelete={() => { setMissionToDelete(mission.id); setDeleteMissionConfirmOpen(true); }}
                       />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Priorité</Label>
-                        <Select value={taskForm.priority} onValueChange={(v: typeof taskForm.priority) => setTaskForm({ ...taskForm, priority: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="high">Haute</SelectItem>
-                            <SelectItem value="medium">Moyenne</SelectItem>
-                            <SelectItem value="low">Basse</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Temps estimé (min)</Label>
-                        <Input
-                          type="number"
-                          value={taskForm.estimated_time}
-                          onChange={(e) => setTaskForm({ ...taskForm, estimated_time: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Projet</Label>
-                        <Select
-                          value={taskForm.project_id || "none"}
-                          onValueChange={(v) => setTaskForm({ ...taskForm, project_id: v === "none" ? "" : v, mission_id: "" })}
-                        >
-                          <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Aucun projet</SelectItem>
-                            {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Échéance</Label>
-                        <Input
-                          type="date"
-                          value={taskForm.due_date}
-                          onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    {taskForm.project_id && (
-                      <div className="space-y-2">
-                        <Label>Mission</Label>
-                        <Select
-                          value={taskForm.mission_id || "none"}
-                          onValueChange={(v) => setTaskForm({ ...taskForm, mission_id: v === "none" ? "" : v })}
-                        >
-                          <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Aucune mission</SelectItem>
-                            {projectMissions?.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    <Button type="submit" className="w-full" disabled={createTask.isPending}>
-                      {createTask.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer la tâche"}
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8 text-sm">
+                    Aucune mission. Crée-en une !
+                  </p>
+                )}
+              </ScrollArea>
 
-            {tasksLoading ? (
-              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : filteredTasks.length > 0 ? (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {filteredTasks.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    projectName={getProjectName(task.project_id)}
-                    missionName={getMissionName(task.mission_id)}
-                    onToggleComplete={() => handleToggleTask(task.id, task.status)}
-                    onDateChange={(date) => handleTaskDateChange(task.id, date)}
-                    onPriorityChange={(p) => handleTaskPriorityChange(task.id, p)}
-                    onClick={() => handleEditTaskClick(task)}
-                  />
-                ))}
+              {/* Tasks Mini Section */}
+              <div className="border-t">
+                <div className="flex items-center justify-between p-4 pb-2">
+                  <h3 className="font-semibold flex items-center gap-2 text-sm">
+                    <CheckSquare className="h-4 w-4" />
+                    Tâches ({filteredTasks.length})
+                  </h3>
+                  <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="gap-1 h-7">
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Créer une tâche</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleCreateTask} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Titre</Label>
+                          <Input
+                            value={taskForm.title}
+                            onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                            placeholder="Ex: Finaliser mockups"
+                            required
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Priorité</Label>
+                            <Select value={taskForm.priority} onValueChange={(v: typeof taskForm.priority) => setTaskForm({ ...taskForm, priority: v })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="high">Haute</SelectItem>
+                                <SelectItem value="medium">Moyenne</SelectItem>
+                                <SelectItem value="low">Basse</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Temps estimé (min)</Label>
+                            <Input
+                              type="number"
+                              value={taskForm.estimated_time}
+                              onChange={(e) => setTaskForm({ ...taskForm, estimated_time: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Projet</Label>
+                            <Select
+                              value={taskForm.project_id || "none"}
+                              onValueChange={(v) => setTaskForm({ ...taskForm, project_id: v === "none" ? "" : v, mission_id: "" })}
+                            >
+                              <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Aucun projet</SelectItem>
+                                {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Échéance</Label>
+                            <Input
+                              type="date"
+                              value={taskForm.due_date}
+                              onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        {taskForm.project_id && (
+                          <div className="space-y-2">
+                            <Label>Mission</Label>
+                            <Select
+                              value={taskForm.mission_id || "none"}
+                              onValueChange={(v) => setTaskForm({ ...taskForm, mission_id: v === "none" ? "" : v })}
+                            >
+                              <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Aucune mission</SelectItem>
+                                {projectMissions?.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        <Button type="submit" className="w-full" disabled={createTask.isPending}>
+                          {createTask.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer la tâche"}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                <ScrollArea className="h-[200px] px-2 pb-2">
+                  {tasksLoading ? (
+                    <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                  ) : filteredTasks.length > 0 ? (
+                    <div className="space-y-1">
+                      {filteredTasks.slice(0, 10).map((task) => (
+                        <TaskRowCompact
+                          key={task.id}
+                          task={task}
+                          projectName={getProjectName(task.project_id)}
+                          missionName={getMissionName(task.mission_id)}
+                          onToggleComplete={() => handleToggleTask(task.id, task.status)}
+                          onDateChange={(date) => handleTaskDateChange(task.id, date)}
+                          onPriorityChange={(p) => handleTaskPriorityChange(task.id, p)}
+                          onClick={() => handleEditTaskClick(task)}
+                        />
+                      ))}
+                      {filteredTasks.length > 10 && (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          +{filteredTasks.length - 10} autres tâches
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4 text-xs">
+                      Aucune tâche
+                    </p>
+                  )}
+                </ScrollArea>
               </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8 text-sm">
-                Aucune tâche. Crée-en une !
-              </p>
-            )}
-          </GlassCard>
-        </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* DETAIL: Intel Panel */}
+          <ResizablePanel defaultSize={60} minSize={40}>
+            <MissionIntelPanel 
+              mission={selectedMission} 
+              onTaskClick={handleTaskClickFromPanel}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
 
         {/* Edit Task Dialog */}
         <Dialog open={isEditTaskDialogOpen} onOpenChange={setIsEditTaskDialogOpen}>
@@ -794,6 +836,9 @@ export default function Tasks() {
                       toast.success("Mission supprimée");
                       setDeleteMissionConfirmOpen(false);
                       setMissionToDelete(null);
+                      if (selectedMissionId === missionToDelete) {
+                        setSelectedMissionId(null);
+                      }
                     } catch { toast.error("Erreur"); }
                   }
                 }}
@@ -804,110 +849,20 @@ export default function Tasks() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Mission Workspace Dialog */}
-        <MissionWorkspaceDialog
-          mission={selectedMissionForWorkspace}
-          open={missionWorkspaceOpen}
-          onOpenChange={setMissionWorkspaceOpen}
-          projectId={selectedMissionForWorkspace?.project_id}
+        {/* Task Detail Portal */}
+        <TaskDetailDialog 
+          task={selectedTaskForDetail} 
+          open={taskDetailOpen} 
+          onOpenChange={setTaskDetailOpen} 
         />
       </div>
     </DashboardLayout>
   );
 }
 
-// ============= SUB-COMPONENTS =============
+// ============= COMPACT TASK ROW =============
 
-interface MissionRowProps {
-  mission: MissionWithContext;
-  onToggleComplete: () => void;
-  onToggleFocus: () => void;
-  onDateChange: (date: Date | undefined) => void;
-  onDelete: () => void;
-  onTitleClick?: () => void;
-}
-
-function MissionRow({ mission, onToggleComplete, onToggleFocus, onDateChange, onDelete, onTitleClick }: MissionRowProps) {
-  const isCompleted = mission.status === "completed";
-  
-  return (
-    <div className={cn(
-      "flex items-center gap-3 rounded-lg bg-muted/30 p-3 transition-all hover:bg-muted/50 group",
-      isCompleted && "opacity-60",
-      mission.is_focus && "ring-1 ring-segment-oracle/50"
-    )}>
-      <Checkbox checked={isCompleted} onCheckedChange={onToggleComplete} />
-      
-      <button 
-        onClick={onToggleFocus}
-        className="shrink-0"
-      >
-        <Star className={cn(
-          "h-4 w-4 transition-colors",
-          mission.is_focus ? "fill-segment-oracle text-segment-oracle" : "text-muted-foreground hover:text-segment-oracle"
-        )} />
-      </button>
-      
-      <div className="flex-1 min-w-0">
-        <button 
-          onClick={onTitleClick}
-          className={cn("font-medium text-sm truncate text-left hover:text-primary transition-colors", isCompleted && "line-through")}
-        >
-          {mission.title}
-        </button>
-        <p className="text-xs text-muted-foreground truncate">
-          {mission.projectName || "Sans projet"}
-          {mission.totalTasks > 0 && ` • ${mission.completedTasks}/${mission.totalTasks} tâches`}
-        </p>
-      </div>
-
-      {/* Progress */}
-      {mission.totalTasks > 0 && (
-        <Progress value={mission.progress} className="h-1.5 w-12" />
-      )}
-
-      {/* Deadline Date Picker */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <CalendarIcon className="h-3 w-3" />
-            {mission.deadline ? format(new Date(mission.deadline), "d MMM", { locale: fr }) : "Date"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <Calendar
-            mode="single"
-            selected={mission.deadline ? new Date(mission.deadline) : undefined}
-            onSelect={onDateChange}
-            initialFocus
-          />
-        </PopoverContent>
-      </Popover>
-
-      {/* Actions Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onToggleFocus}>
-            <Star className="h-4 w-4 mr-2" />
-            {mission.is_focus ? "Retirer du focus" : "Ajouter au focus"}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onDelete} className="text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Supprimer
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
-
-interface TaskRowProps {
+interface TaskRowCompactProps {
   task: Task;
   projectName: string;
   missionName: string | null;
@@ -917,13 +872,13 @@ interface TaskRowProps {
   onClick: () => void;
 }
 
-function TaskRow({ task, projectName, missionName, onToggleComplete, onDateChange, onPriorityChange, onClick }: TaskRowProps) {
+function TaskRowCompact({ task, projectName, missionName, onToggleComplete, onDateChange, onPriorityChange, onClick }: TaskRowCompactProps) {
   const isCompleted = task.status === "completed";
   
   return (
     <div 
       className={cn(
-        "flex items-center gap-3 rounded-lg border-l-4 bg-muted/30 p-3 transition-all hover:bg-muted/50 cursor-pointer group",
+        "flex items-center gap-2 rounded-lg border-l-2 bg-muted/30 p-2 transition-all hover:bg-muted/50 cursor-pointer group",
         task.priority === "high" ? "border-l-destructive" : 
         task.priority === "medium" ? "border-l-segment-oracle" : "border-l-segment-consulting",
         isCompleted && "opacity-60"
@@ -934,15 +889,13 @@ function TaskRow({ task, projectName, missionName, onToggleComplete, onDateChang
         checked={isCompleted} 
         onCheckedChange={onToggleComplete}
         onClick={(e) => e.stopPropagation()}
+        className="shrink-0"
       />
       
       <div className="flex-1 min-w-0">
-        <p className={cn("font-medium text-sm truncate", isCompleted && "line-through")}>{task.title}</p>
-        <p className="text-xs text-muted-foreground truncate">
+        <p className={cn("font-medium text-xs truncate", isCompleted && "line-through")}>{task.title}</p>
+        <p className="text-[10px] text-muted-foreground truncate">
           {missionName || projectName}
-          {task.subtasks && task.subtasks.length > 0 && (
-            <span> • {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
-          )}
         </p>
       </div>
 
@@ -950,26 +903,24 @@ function TaskRow({ task, projectName, missionName, onToggleComplete, onDateChang
       <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="sm" className={cn(
-            "h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity",
+            "h-5 px-1 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
             priorityConfig[task.priority].color
           )}>
-            {task.priority === "high" && <AlertTriangle className="h-3 w-3 mr-1" />}
-            {priorityConfig[task.priority].label}
+            {task.priority === "high" && <AlertTriangle className="h-2.5 w-2.5" />}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenuItem onClick={() => onPriorityChange("high")} className="text-destructive">Haute</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onPriorityChange("medium")} className="text-segment-oracle">Moyenne</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onPriorityChange("low")} className="text-segment-consulting">Basse</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onPriorityChange("high")} className="text-destructive text-xs">Haute</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onPriorityChange("medium")} className="text-segment-oracle text-xs">Moyenne</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onPriorityChange("low")} className="text-segment-consulting text-xs">Basse</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       {/* Date Picker */}
       <Popover>
         <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-            <CalendarIcon className="h-3 w-3 mr-1" />
-            {task.due_date ? format(new Date(task.due_date), "d MMM", { locale: fr }) : "Date"}
+          <Button variant="ghost" size="sm" className="h-5 px-1 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <CalendarIcon className="h-2.5 w-2.5" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="end" onClick={(e) => e.stopPropagation()}>
