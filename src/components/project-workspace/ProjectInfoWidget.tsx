@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SegmentProgress } from "@/components/ui/segment-progress";
 import { 
   Info, 
   Pencil, 
@@ -214,18 +215,17 @@ export function ProjectInfoWidget({ project }: ProjectInfoWidgetProps) {
             )}
           </div>
 
-          {/* Progress Bar */}
+          {/* Progress Bar - using SegmentProgress */}
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Progression</span>
               <span className="font-medium">{project.progress}%</span>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all duration-300"
-                style={{ width: `${project.progress}%` }}
-              />
-            </div>
+            <SegmentProgress 
+              value={project.progress} 
+              segment={project.segment} 
+              size="md"
+            />
           </div>
         </div>
       )}

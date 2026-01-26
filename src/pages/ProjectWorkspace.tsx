@@ -20,7 +20,10 @@ import {
   Clock,
   Map,
   GripVertical,
-  RotateCcw
+  RotateCcw,
+  Settings,
+  Wallet,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProjectInfoWidget } from "@/components/project-workspace/ProjectInfoWidget";
@@ -29,29 +32,17 @@ import { ProjectFinancesWidget } from "@/components/project-workspace/ProjectFin
 import { ProjectDocumentsWidget } from "@/components/project-workspace/ProjectDocumentsWidget";
 import { ProjectTimelineWidget } from "@/components/project-workspace/ProjectTimelineWidget";
 import { ProjectRoadmapWidget } from "@/components/project-workspace/ProjectRoadmapWidget";
+import { ProjectBudgetWidget } from "@/components/project-workspace/ProjectBudgetWidget";
+import { ProjectVelocityWidget } from "@/components/project-workspace/ProjectVelocityWidget";
+import { ProjectSettingsDialog } from "@/components/project-workspace/ProjectSettingsDialog";
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { Project } from "@/hooks/useProjects";
-
-const segmentLabels: Record<string, string> = {
-  ecommerce: "E-commerce",
-  tiktok: "TikTok",
-  consulting: "Consulting",
-  oracle: "Oracle",
-  data: "Les Enquêtes",
-  tech: "Dream App",
-  other: "Autre",
-};
-
-const segmentColors: Record<string, string> = {
-  ecommerce: "bg-segment-ecommerce text-white",
-  tiktok: "bg-segment-tiktok text-white",
-  consulting: "bg-segment-consulting text-white",
-  oracle: "bg-segment-oracle text-white",
-  data: "bg-segment-data text-white",
-  tech: "bg-segment-tech text-white",
-  other: "bg-muted text-muted-foreground",
-};
+import { 
+  getSegmentLabel, 
+  getSegmentColor, 
+  getSegmentBorderColor 
+} from "@/config/segments";
 
 // Widget configuration registry
 interface ProjectWidgetConfig {
@@ -91,6 +82,20 @@ const PROJECT_WIDGET_REGISTRY: Record<string, ProjectWidgetConfig> = {
     colSpan: 1,
     hiddenInFocus: false,
   },
+  budget: {
+    id: "budget",
+    label: "Budget",
+    icon: Wallet,
+    colSpan: 1,
+    hiddenInFocus: true,
+  },
+  velocity: {
+    id: "velocity",
+    label: "Vélocité",
+    icon: Zap,
+    colSpan: 1,
+    hiddenInFocus: true,
+  },
   finances: {
     id: "finances",
     label: "Finances",
@@ -109,48 +114,6 @@ const PROJECT_WIDGET_REGISTRY: Record<string, ProjectWidgetConfig> = {
 
 // Widget visibility state type
 type WidgetVisibility = Record<string, boolean>;
-
-// Get the widget component for a given ID
-const getWidgetComponent = (widgetId: string, project: Project) => {
-  switch (widgetId) {
-    case "timeline":
-      return <ProjectTimelineWidget projectId={project.id} />;
-    case "info":
-      return <ProjectInfoWidget project={project} />;
-    case "roadmap":
-      return (
-        <ProjectRoadmapWidget 
-          projectId={project.id} 
-          mode={project.mode as "work" | "personal"} 
-        />
-      );
-    case "tasks":
-      return (
-        <ProjectTasksWidget 
-          projectId={project.id}
-          projectName={project.name}
-          mode={project.mode as "work" | "personal"}
-        />
-      );
-    case "finances":
-      return (
-        <ProjectFinancesWidget
-          projectId={project.id}
-          segment={project.segment}
-          budget={project.budget}
-        />
-      );
-    case "documents":
-      return (
-        <ProjectDocumentsWidget
-          segment={project.segment}
-          mode={project.mode as "work" | "personal"}
-        />
-      );
-    default:
-      return null;
-  }
-};
 
 // Get col-span class based on config
 const getColSpanClass = (config: ProjectWidgetConfig): string => {
@@ -175,11 +138,21 @@ export default function ProjectWorkspace() {
   // Check for deep-link tab parameter
   const tabParam = searchParams.get("tab");
   
+  // Settings dialog state
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // Hourly rate state (persisted in localStorage)
+  const [hourlyRate, setHourlyRate] = useState(() => {
+    const saved = localStorage.getItem(`project-hourly-rate-${id}`);
+    return saved ? parseFloat(saved) : 50;
+  });
+  
   // Widget visibility state with localStorage persistence
   const [visibleWidgets, setVisibleWidgets] = useState<WidgetVisibility>(() => {
     const saved = localStorage.getItem(`project-widgets-visibility-${id}`);
     const defaultVisibility: WidgetVisibility = {};
-    DEFAULT_PROJECT_WIDGET_ORDER.forEach(widgetId => {
+    // Include new widgets in default visibility
+    [...DEFAULT_PROJECT_WIDGET_ORDER, "budget", "velocity"].forEach(widgetId => {
       defaultVisibility[widgetId] = true;
     });
     
@@ -242,6 +215,64 @@ export default function ProjectWorkspace() {
     }));
   };
 
+  // Get the widget component for a given ID
+  const getWidgetComponent = (widgetId: string, proj: Project) => {
+    switch (widgetId) {
+      case "timeline":
+        return <ProjectTimelineWidget projectId={proj.id} />;
+      case "info":
+        return <ProjectInfoWidget project={proj} />;
+      case "roadmap":
+        return (
+          <ProjectRoadmapWidget 
+            projectId={proj.id} 
+            mode={proj.mode as "work" | "personal"} 
+          />
+        );
+      case "tasks":
+        return (
+          <ProjectTasksWidget 
+            projectId={proj.id}
+            projectName={proj.name}
+            mode={proj.mode as "work" | "personal"}
+          />
+        );
+      case "budget":
+        return (
+          <ProjectBudgetWidget
+            projectId={proj.id}
+            budget={proj.budget}
+            segment={proj.segment}
+            hourlyRate={hourlyRate}
+          />
+        );
+      case "velocity":
+        return (
+          <ProjectVelocityWidget
+            projectId={proj.id}
+            segment={proj.segment}
+          />
+        );
+      case "finances":
+        return (
+          <ProjectFinancesWidget
+            projectId={proj.id}
+            segment={proj.segment}
+            budget={proj.budget}
+          />
+        );
+      case "documents":
+        return (
+          <ProjectDocumentsWidget
+            segment={proj.segment}
+            mode={proj.mode as "work" | "personal"}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -266,6 +297,10 @@ export default function ProjectWorkspace() {
     );
   }
 
+  // Dynamic segment-based styling
+  const segmentColorClass = getSegmentColor(project.segment);
+  const segmentBorderClass = getSegmentBorderColor(project.segment);
+
   // Focus mode header content
   const focusModeHeader = isFocusMode ? (
     <div className="flex items-center gap-3">
@@ -281,16 +316,17 @@ export default function ProjectWorkspace() {
       <span className="font-medium">{project?.name}</span>
       <span className={cn(
         "px-2 py-0.5 rounded-full text-xs font-medium",
-        segmentColors[project?.segment || "other"]
+        segmentColorClass
       )}>
-        {segmentLabels[project?.segment || "other"]}
+        {getSegmentLabel(project?.segment || "other")}
       </span>
     </div>
   ) : undefined;
 
-  // Filter visible widgets for rendering
+  // Filter visible widgets for rendering - include new widgets
+  const allWidgetIds = [...new Set([...widgetOrder, "budget", "velocity"])];
   const getVisibleWidgets = () => {
-    return widgetOrder.filter(widgetId => {
+    return allWidgetIds.filter(widgetId => {
       const config = PROJECT_WIDGET_REGISTRY[widgetId];
       if (!config) return false;
       if (!visibleWidgets[widgetId]) return false;
@@ -307,7 +343,11 @@ export default function ProjectWorkspace() {
       <div className="space-y-6 animate-fade-in">
         {/* Sticky Header - hidden in focus mode */}
         {!isFocusMode && (
-          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 -mx-4 px-4 pt-4 -mt-4 border-b border-border/50">
+          <div className={cn(
+            "sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 -mx-4 px-4 pt-4 -mt-4 border-b transition-colors duration-300",
+            segmentBorderClass,
+            "border-opacity-30"
+          )}>
             {/* Navigation Row */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -353,6 +393,17 @@ export default function ProjectWorkspace() {
                   </span>
                 </Button>
                 
+                {/* Settings Button */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSettingsOpen(true)}
+                  className="gap-1.5 rounded-2xl"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Paramètres</span>
+                </Button>
+                
                 {/* Focus Mode */}
                 <Button 
                   variant="outline" 
@@ -372,9 +423,9 @@ export default function ProjectWorkspace() {
               <h1 className="text-2xl font-bold md:text-3xl">{project.name}</h1>
               <span className={cn(
                 "px-3 py-1 rounded-full text-sm font-medium w-fit",
-                segmentColors[project.segment]
+                segmentColorClass
               )}>
-                {segmentLabels[project.segment]}
+                {getSegmentLabel(project.segment)}
               </span>
             </div>
 
@@ -455,6 +506,15 @@ export default function ProjectWorkspace() {
           )
         )}
       </div>
+      
+      {/* Settings Dialog */}
+      <ProjectSettingsDialog
+        project={project}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        hourlyRate={hourlyRate}
+        onHourlyRateChange={setHourlyRate}
+      />
     </DashboardLayout>
   );
 }
