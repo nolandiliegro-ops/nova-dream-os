@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -22,6 +22,7 @@ import {
 import { CalendarDays, Loader2, FolderKanban } from "lucide-react";
 import { useCreateProject } from "@/hooks/useProjects";
 import { useMode } from "@/contexts/ModeContext";
+import { useSegments, ICON_MAP } from "@/hooks/useSegments";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -30,27 +31,32 @@ interface QuickProjectDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const SEGMENTS = [
-  { value: "ecommerce", label: "E-commerce" },
-  { value: "tiktok", label: "TikTok" },
-  { value: "consulting", label: "Consulting" },
-  { value: "oracle", label: "Oracle" },
-  { value: "data", label: "Data" },
-  { value: "tech", label: "Tech" },
-  { value: "other", label: "Autre" },
-];
-
 export function QuickProjectDialog({ open, onOpenChange }: QuickProjectDialogProps) {
   const { mode } = useMode();
   const createProject = useCreateProject();
   const navigate = useNavigate();
+  const { data: segments } = useSegments(mode);
   
   const [form, setForm] = useState({
     name: "",
-    segment: "tech",
+    segment: "",
     deadline: null as Date | null,
   });
   const [deadlineOpen, setDeadlineOpen] = useState(false);
+
+  // Set default segment when segments load
+  useEffect(() => {
+    if (segments && segments.length > 0 && !form.segment) {
+      setForm(prev => ({ ...prev, segment: segments[0].slug }));
+    }
+  }, [segments, form.segment]);
+
+  // Reset segment when mode changes
+  useEffect(() => {
+    if (segments && segments.length > 0) {
+      setForm(prev => ({ ...prev, segment: segments[0].slug }));
+    }
+  }, [mode, segments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +70,7 @@ export function QuickProjectDialog({ open, onOpenChange }: QuickProjectDialogPro
       const newProject = await createProject.mutateAsync({
         name: form.name.trim(),
         description: null,
-        segment: form.segment as any,
+        segment: form.segment,
         status: "planned",
         progress: 0,
         deadline: form.deadline ? format(form.deadline, "yyyy-MM-dd") : null,
@@ -77,7 +83,7 @@ export function QuickProjectDialog({ open, onOpenChange }: QuickProjectDialogPro
       onOpenChange(false);
       setForm({
         name: "",
-        segment: "tech",
+        segment: segments?.[0]?.slug || "",
         deadline: null,
       });
       
@@ -124,9 +130,24 @@ export function QuickProjectDialog({ open, onOpenChange }: QuickProjectDialogPro
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SEGMENTS.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
+                  {segments?.map(s => {
+                    const Icon = ICON_MAP[s.icon];
+                    return (
+                      <SelectItem key={s.id} value={s.slug}>
+                        <div className="flex items-center gap-2">
+                          {Icon && (
+                            <div
+                              className="w-4 h-4 rounded flex items-center justify-center"
+                              style={{ backgroundColor: s.color }}
+                            >
+                              <Icon className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                          {s.name}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
