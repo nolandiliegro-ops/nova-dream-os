@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
 import { Project, useUpdateProject } from "@/hooks/useProjects";
-import { getSegmentsForMode, getSegmentLabel } from "@/config/segments";
+import { useSegments, getSegmentIcon, ICON_MAP } from "@/hooks/useSegments";
 import { toast } from "sonner";
 
 interface ProjectSettingsDialogProps {
@@ -47,7 +47,7 @@ export function ProjectSettingsDialog({
   const [localHourlyRate, setLocalHourlyRate] = useState(hourlyRate.toString());
 
   const updateProject = useUpdateProject();
-  const segments = getSegmentsForMode(project.mode as "work" | "personal");
+  const { data: segments } = useSegments(project.mode as "work" | "personal");
 
   // Sync form data when project changes
   useEffect(() => {
@@ -116,17 +116,30 @@ export function ProjectSettingsDialog({
             <Label>Segment</Label>
             <Select
               value={formData.segment}
-              onValueChange={(value: Project["segment"]) => setFormData({ ...formData, segment: value })}
+              onValueChange={(value) => setFormData({ ...formData, segment: value })}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {segments.map((seg) => (
-                  <SelectItem key={seg.value} value={seg.value}>
-                    {getSegmentLabel(seg.value)}
-                  </SelectItem>
-                ))}
+                {segments?.map((seg) => {
+                  const Icon = ICON_MAP[seg.icon];
+                  return (
+                    <SelectItem key={seg.id} value={seg.slug}>
+                      <div className="flex items-center gap-2">
+                        {Icon && (
+                          <div
+                            className="w-4 h-4 rounded flex items-center justify-center"
+                            style={{ backgroundColor: seg.color }}
+                          >
+                            <Icon className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        {seg.name}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

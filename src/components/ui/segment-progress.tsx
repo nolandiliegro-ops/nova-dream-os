@@ -2,22 +2,23 @@ import * as React from "react";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 import { cn } from "@/lib/utils";
 
-// Mapping from segment to Tailwind bg classes
+// Fallback mapping for static segment colors (backwards compatibility)
 const SEGMENT_INDICATOR_COLORS: Record<string, string> = {
-  ecommerce: "bg-segment-ecommerce",
-  tiktok: "bg-segment-tiktok",
-  consulting: "bg-segment-consulting",
-  oracle: "bg-segment-oracle",
-  data: "bg-segment-data",
-  tech: "bg-segment-tech",
-  hobby: "bg-segment-oracle",
-  wellness: "bg-segment-data",
-  travel: "bg-segment-consulting",
-  other: "bg-primary",
+  ecommerce: "#22c55e",
+  tiktok: "#a855f7",
+  consulting: "#3b82f6",
+  oracle: "#f97316",
+  data: "#06b6d4",
+  tech: "#ec4899",
+  hobby: "#f97316",
+  wellness: "#06b6d4",
+  travel: "#3b82f6",
+  other: "#6366f1",
 };
 
 interface SegmentProgressProps extends React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> {
   segment?: string;
+  segmentColor?: string; // HEX color for dynamic segments
   size?: "sm" | "md" | "lg";
   showLabel?: boolean;
 }
@@ -25,8 +26,9 @@ interface SegmentProgressProps extends React.ComponentPropsWithoutRef<typeof Pro
 const SegmentProgress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   SegmentProgressProps
->(({ className, value, segment = "other", size = "md", showLabel = false, ...props }, ref) => {
-  const indicatorColor = SEGMENT_INDICATOR_COLORS[segment] || SEGMENT_INDICATOR_COLORS.other;
+>(({ className, value, segment = "other", segmentColor, size = "md", showLabel = false, ...props }, ref) => {
+  // Use dynamic color if provided, otherwise fall back to static mapping
+  const indicatorColor = segmentColor || SEGMENT_INDICATOR_COLORS[segment] || SEGMENT_INDICATOR_COLORS.other;
   
   const sizeClasses = {
     sm: "h-1.5",
@@ -46,11 +48,11 @@ const SegmentProgress = React.forwardRef<
         {...props}
       >
         <ProgressPrimitive.Indicator
-          className={cn(
-            "h-full flex-1 transition-all duration-500 ease-out rounded-full",
-            indicatorColor
-          )}
-          style={{ width: `${value || 0}%` }}
+          className="h-full flex-1 transition-all duration-500 ease-out rounded-full"
+          style={{ 
+            width: `${value || 0}%`,
+            backgroundColor: indicatorColor,
+          }}
         />
       </ProgressPrimitive.Root>
       {showLabel && (
