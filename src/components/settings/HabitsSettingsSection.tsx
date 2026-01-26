@@ -45,6 +45,7 @@ import {
   Music,
   Smile,
   Target,
+  Shield,
 } from "lucide-react";
 import { useHabits, useCreateHabit, useDeleteHabit, Habit } from "@/hooks/useHabits";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ const HABIT_ICONS = [
   { id: "music", label: "Créativité", icon: Music },
   { id: "smile", label: "Bien-être", icon: Smile },
   { id: "target", label: "Objectif", icon: Target },
+  { id: "shield", label: "Sobriété", icon: Shield },
   { id: "check", label: "Général", icon: Check },
 ];
 
@@ -288,6 +290,15 @@ export function HabitsSettingsSection() {
   const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null);
 
   const handleCreate = (data: HabitFormData) => {
+    // Check for duplicate name
+    const existingHabit = habits?.find(
+      (h) => h.title.toLowerCase().trim() === data.title.toLowerCase().trim()
+    );
+    if (existingHabit) {
+      toast.error("Une habitude avec ce nom existe déjà");
+      return;
+    }
+    
     createHabit.mutate(
       { title: data.title, icon: data.icon, color: data.color },
       {
