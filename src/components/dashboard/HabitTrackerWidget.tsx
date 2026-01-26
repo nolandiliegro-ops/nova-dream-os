@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { GlassCard } from "./GlassCard";
-import { Heart, Check, Dumbbell, Brain, BookOpen, Loader2, Flame, Coffee, Moon, Sun, Zap, Music, Smile, Target, Filter, Star } from "lucide-react";
+import { Heart, Check, Dumbbell, Brain, BookOpen, Loader2, Flame, Coffee, Moon, Sun, Zap, Music, Smile, Target, Filter, Star, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHabits, useToggleHabitDay, useCreateDefaultHabits, Habit } from "@/hooks/useHabits";
 import { format, subDays, isToday } from "date-fns";
@@ -29,6 +29,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   music: Music,
   smile: Smile,
   target: Target,
+  shield: Shield,
 };
 
 type FilterType = "all" | "daily" | "weekdays" | "weekly" | "active";
@@ -170,7 +171,7 @@ export function HabitTrackerWidget() {
           <Loader2 className="h-6 w-6 animate-spin text-segment-data" />
         </div>
       ) : (
-        <div className="flex-1 max-h-[320px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-muted">
+        <div className="flex-1 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-muted">
           <div className="space-y-3">
             {/* Days header */}
             <div className="grid grid-cols-8 gap-1 sm:gap-2 sticky top-0 bg-inherit py-1">

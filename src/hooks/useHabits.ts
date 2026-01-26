@@ -18,9 +18,10 @@ export interface Habit {
 
 // Default habits to create for new users
 const DEFAULT_HABITS = [
-  { title: "Sport", icon: "dumbbell", color: "segment-data" },
+  { title: "Sport", icon: "dumbbell", color: "segment-ecommerce" },
+  { title: "Cours de langue", icon: "book-open", color: "segment-consulting" },
   { title: "Méditation", icon: "brain", color: "segment-oracle" },
-  { title: "Lecture", icon: "book-open", color: "segment-consulting" },
+  { title: "Sobre", icon: "shield", color: "segment-tiktok" },
 ];
 
 export function useHabits() {
