@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, FolderKanban, Clock, CheckCircle2, AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjects, useProjectStats, useCreateProject, useUpdateProject, useDeleteProject } from "@/hooks/useProjects";
+import { useSegments, getSegmentBgStyle, getSegmentColor, ICON_MAP } from "@/hooks/useSegments";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -22,14 +23,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  WORK_SEGMENTS,
-  PERSONAL_SEGMENTS,
-  SEGMENT_BORDER_COLORS,
-  SEGMENT_BG_COLORS,
-  getSegmentsForMode,
-  getDefaultSegmentForMode,
-} from "@/config/segments";
 
 const statusConfig = {
   planned: { label: "Planifié", icon: Clock, color: "text-muted-foreground" },
@@ -48,9 +41,10 @@ export default function Projects() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-  // Dynamic segments based on mode
-  const segments = mode === "work" ? WORK_SEGMENTS : PERSONAL_SEGMENTS;
-  const defaultSegment = mode === "work" ? "ecommerce" : "hobby";
+  
+  // Dynamic segments from database
+  const { data: segments, isLoading: segmentsLoading } = useSegments(mode);
+  const defaultSegment = segments?.[0]?.slug || "other";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -75,12 +69,15 @@ export default function Projects() {
     if (urlSegment) setSegmentFilter(urlSegment);
   }, [searchParams]);
 
-  // Reset filter when mode changes to avoid stuck on non-existent segment
+  // Reset filter when mode changes and update default segment
   useEffect(() => {
     setSegmentFilter(null);
-    setFormData((prev) => ({ ...prev, segment: mode === "work" ? "ecommerce" : "hobby" }));
-    setEditFormData((prev) => ({ ...prev, segment: mode === "work" ? "ecommerce" : "hobby" }));
-  }, [mode]);
+    if (segments && segments.length > 0) {
+      const newDefault = segments[0].slug;
+      setFormData((prev) => ({ ...prev, segment: newDefault }));
+      setEditFormData((prev) => ({ ...prev, segment: newDefault }));
+    }
+  }, [mode, segments]);
 
   const { data: projects, isLoading } = useProjects(mode);
   const stats = useProjectStats(mode);
@@ -216,14 +213,29 @@ export default function Projects() {
                     <Label htmlFor="segment">Segment</Label>
                     <Select
                       value={formData.segment}
-                      onValueChange={(value: typeof formData.segment) => setFormData({ ...formData, segment: value })}
+                      onValueChange={(value) => setFormData({ ...formData, segment: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {segments.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        {segments?.map((s) => (
+                          <SelectItem key={s.id} value={s.slug}>
+                            <div className="flex items-center gap-2">
+                              {ICON_MAP[s.icon] && (() => {
+                                const Icon = ICON_MAP[s.icon];
+                                return (
+                                  <div
+                                    className="w-4 h-4 rounded flex items-center justify-center"
+                                    style={{ backgroundColor: s.color }}
+                                  >
+                                    <Icon className="w-3 h-3 text-white" />
+                                  </div>
+                                );
+                              })()}
+                              {s.name}
+                            </div>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -351,14 +363,15 @@ export default function Projects() {
           >
             Tous
           </Button>
-          {segments.map(s => (
+          {segments?.map(s => (
             <Button
-              key={s.value}
-              variant={segmentFilter === s.value ? "default" : "outline"}
+              key={s.id}
+              variant={segmentFilter === s.slug ? "default" : "outline"}
               size="sm"
-              onClick={() => setSegmentFilter(s.value)}
+              onClick={() => setSegmentFilter(s.slug)}
+              style={segmentFilter === s.slug ? { backgroundColor: s.color } : undefined}
             >
-              {s.label}
+              {s.name}
             </Button>
           ))}
         </div>
@@ -372,19 +385,21 @@ export default function Projects() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredProjects?.map((project) => {
               const StatusIcon = statusConfig[project.status].icon;
+              const segmentData = segments?.find(s => s.slug === project.segment);
+              const segmentColor = segmentData?.color || "#64748b";
               
               return (
                 <GlassCard 
                   key={project.id} 
-                  className={cn(
-                    "p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02]",
-                    SEGMENT_BORDER_COLORS[project.segment] || SEGMENT_BORDER_COLORS.other,
-                    `text-${project.segment === 'other' ? 'muted-foreground' : `segment-${project.segment}`}`
-                  )}
+                  className="p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02]"
+                  style={{ borderLeftColor: segmentColor }}
                   onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className={cn("rounded-lg p-2", SEGMENT_BG_COLORS[project.segment] || SEGMENT_BG_COLORS.other)}>
+                    <div 
+                      className="rounded-lg p-2"
+                      style={getSegmentBgStyle(segments, project.segment, 0.15)}
+                    >
                       <FolderKanban className="h-5 w-5" />
                     </div>
                     <div className={cn("flex items-center gap-1 text-xs", statusConfig[project.status].color)}>
@@ -463,14 +478,14 @@ export default function Projects() {
                   <Label htmlFor="edit-segment">Segment</Label>
                   <Select
                     value={editFormData.segment}
-                    onValueChange={(value: typeof editFormData.segment) => setEditFormData({ ...editFormData, segment: value })}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, segment: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {segments.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      {segments?.map((s) => (
+                        <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
