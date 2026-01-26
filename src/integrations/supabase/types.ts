@@ -192,23 +192,32 @@ export type Database = {
       }
       notes: {
         Row: {
+          color: string | null
           content: string | null
           created_at: string
           id: string
+          is_pinned: boolean
+          title: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          color?: string | null
           content?: string | null
           created_at?: string
           id?: string
+          is_pinned?: boolean
+          title?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          color?: string | null
           content?: string | null
           created_at?: string
           id?: string
+          is_pinned?: boolean
+          title?: string | null
           updated_at?: string
           user_id?: string
         }

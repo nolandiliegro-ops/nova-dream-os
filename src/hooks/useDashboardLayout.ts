@@ -10,6 +10,7 @@ export const DEFAULT_WIDGET_ORDER = [
   "calendar",
   "focus",
   "habits",
+  "pinnedNotes",
   "tasks",
 ];
 
