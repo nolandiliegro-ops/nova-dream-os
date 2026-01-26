@@ -23,10 +23,6 @@ export interface CreateMessageInput {
 /**
  * Hook pour gérer l'historique des conversations avec Nova
  * Supporte la persistance multi-device et la synchronisation en temps réel
- * 
- * @param projectId - ID du projet (optionnel, pour filtrer les messages par projet)
- * @param limit - Nombre maximum de messages à récupérer (défaut: 100)
- * @returns {Object} - Messages, fonctions CRUD et état de chargement
  */
 export const useChatHistory = (projectId?: string, limit = 100) => {
   const queryClient = useQueryClient();
@@ -35,14 +31,14 @@ export const useChatHistory = (projectId?: string, limit = 100) => {
   const { data: messages, isLoading, error } = useQuery({
     queryKey: ['chat-history', projectId],
     queryFn: async () => {
-      const query = supabase
-        .from('chat_history')
+      let query = supabase
+        .from('chat_history' as any)
         .select('*')
         .order('created_at', { ascending: true })
         .limit(limit);
 
       if (projectId) {
-        query.eq('project_id', projectId);
+        query = query.eq('project_id', projectId);
       }
 
       const { data, error } = await query;
@@ -52,26 +48,26 @@ export const useChatHistory = (projectId?: string, limit = 100) => {
         throw error;
       }
 
-      return (data || []) as ChatMessage[];
+      return (data as unknown as ChatMessage[]) || [];
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
     retry: 2,
   });
 
   // Ajouter un message
   const addMessage = useMutation({
     mutationFn: async (message: CreateMessageInput) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
       
-      if (!user) {
+      if (!userData.user) {
         throw new Error('User not authenticated');
       }
 
       const { data, error } = await supabase
-        .from('chat_history')
+        .from('chat_history' as any)
         .insert({
-          user_id: user.id,
-          project_id: message.project_id || projectId,
+          user_id: userData.user.id,
+          project_id: message.project_id || projectId || null,
           role: message.role,
           content: message.content,
           attachments: message.attachments || [],
@@ -84,7 +80,7 @@ export const useChatHistory = (projectId?: string, limit = 100) => {
         throw error;
       }
 
-      return data as ChatMessage;
+      return data as unknown as ChatMessage;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-history', projectId] });
@@ -99,7 +95,7 @@ export const useChatHistory = (projectId?: string, limit = 100) => {
   const deleteMessage = useMutation({
     mutationFn: async (messageId: string) => {
       const { error } = await supabase
-        .from('chat_history')
+        .from('chat_history' as any)
         .delete()
         .eq('id', messageId);
 
@@ -121,19 +117,19 @@ export const useChatHistory = (projectId?: string, limit = 100) => {
   // Supprimer tout l'historique
   const clearHistory = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
       
-      if (!user) {
+      if (!userData.user) {
         throw new Error('User not authenticated');
       }
 
-      const query = supabase
-        .from('chat_history')
+      let query = supabase
+        .from('chat_history' as any)
         .delete()
-        .eq('user_id', user.id);
+        .eq('user_id', userData.user.id);
 
       if (projectId) {
-        query.eq('project_id', projectId);
+        query = query.eq('project_id', projectId);
       }
 
       const { error } = await query;
@@ -155,12 +151,13 @@ export const useChatHistory = (projectId?: string, limit = 100) => {
 
   // Subscription Realtime pour la synchronisation multi-device
   useEffect(() => {
-    const { data: { user } } = supabase.auth.getUser();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    user.then((userData) => {
+    const setupRealtime = async () => {
+      const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const channel = supabase
+      channel = supabase
         .channel('chat_history_changes')
         .on(
           'postgres_changes',
@@ -174,16 +171,19 @@ export const useChatHistory = (projectId?: string, limit = 100) => {
           },
           (payload) => {
             console.log('Realtime change detected:', payload);
-            // Invalider le cache pour forcer un refresh
             queryClient.invalidateQueries({ queryKey: ['chat-history', projectId] });
           }
         )
         .subscribe();
+    };
 
-      return () => {
+    setupRealtime();
+
+    return () => {
+      if (channel) {
         supabase.removeChannel(channel);
-      };
-    });
+      }
+    };
   }, [projectId, queryClient]);
 
   return {

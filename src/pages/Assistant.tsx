@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, Sparkles, Zap, Brain, MessageSquare, Loader2, User, FileText, Trash2 } from "lucide-react";
+import { Bot, Send, Sparkles, Zap, Brain, MessageSquare, User, FileText, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMode } from "@/contexts/ModeContext";
@@ -11,55 +11,115 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentAnalysisCard } from "@/components/assistant/DocumentAnalysisCard";
 import { useAnalyzeDocument, useLatestDocument, type AnalysisResult } from "@/hooks/useDocumentAnalysis";
-
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-};
+import { useChatHistory, type ChatMessage } from "@/hooks/useChatHistory";
+import { UploadDropzone } from "@/components/assistant/UploadDropzone";
+import { AttachmentPicker } from "@/components/assistant/AttachmentPicker";
+import { AttachmentPreview, type Attachment } from "@/components/assistant/AttachmentPreview";
+import { LoadingMessage, type LoadingAction } from "@/components/assistant/LoadingMessage";
+import { ActionCardRenderer, removeActionsFromContent } from "@/components/assistant/ActionCardRenderer";
+import { useUploadDocument } from "@/hooks/useDocuments";
+import { AnimatePresence } from "framer-motion";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
-
-const CHAT_STORAGE_KEY = "nova-chat-history";
 
 export default function Assistant() {
   const { user } = useAuth();
   const { mode } = useMode();
   
-  // Initialize messages from localStorage
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Database-backed chat history
+  const { 
+    messages: dbMessages, 
+    addMessage, 
+    clearHistory, 
+    isLoading: historyLoading,
+    isClearingHistory 
+  } = useChatHistory();
+  
+  // Local state for streaming messages
+  const [streamingContent, setStreamingContent] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<LoadingAction>("thinking");
+  
+  // Attachments
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const { data: latestDocument } = useLatestDocument(mode);
   const analyzeDocument = useAnalyzeDocument();
+  const uploadDocument = useUploadDocument();
 
-  // Persist messages to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-    } catch {
-      // Ignore storage errors
-    }
-  }, [messages]);
+  // Combine DB messages with streaming message
+  const displayMessages: ChatMessage[] = [
+    ...dbMessages,
+    ...(isStreaming && streamingContent 
+      ? [{ 
+          id: 'streaming', 
+          user_id: user?.id || '', 
+          role: 'assistant' as const, 
+          content: streamingContent,
+          attachments: [],
+          created_at: new Date().toISOString()
+        }] 
+      : []
+    ),
+  ];
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [displayMessages, streamingContent]);
 
-  const streamChat = useCallback(async (userMessages: Message[]) => {
+  const handleFileDrop = useCallback(async (files: File[]) => {
+    for (const file of files) {
+      const id = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const previewUrl = file.type.startsWith("image/") 
+        ? URL.createObjectURL(file) 
+        : undefined;
+      
+      setAttachments((prev) => [
+        ...prev,
+        {
+          id,
+          name: file.name,
+          type: "file",
+          mimeType: file.type,
+          previewUrl,
+          file,
+        },
+      ]);
+    }
+  }, []);
+
+  const handleDocumentSelect = useCallback((doc: { id: string; name: string; file_path: string }) => {
+    const id = `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setAttachments((prev) => [
+      ...prev,
+      {
+        id,
+        name: doc.name,
+        type: "document",
+        documentId: doc.id,
+        filePath: doc.file_path,
+      },
+    ]);
+  }, []);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => {
+      const attachment = prev.find((a) => a.id === id);
+      if (attachment?.previewUrl) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
+      return prev.filter((a) => a.id !== id);
+    });
+  }, []);
+
+  const streamChat = useCallback(async (userMessages: { role: string; content: string }[]) => {
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
@@ -113,15 +173,7 @@ export default function Assistant() {
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
           if (content) {
             assistantContent += content;
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              if (last?.role === "assistant") {
-                return prev.map((m, i) =>
-                  i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                );
-              }
-              return [...prev, { role: "assistant", content: assistantContent }];
-            });
+            setStreamingContent(assistantContent);
           }
         } catch {
           textBuffer = line + "\n" + textBuffer;
@@ -144,45 +196,80 @@ export default function Assistant() {
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
           if (content) {
             assistantContent += content;
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              if (last?.role === "assistant") {
-                return prev.map((m, i) =>
-                  i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                );
-              }
-              return [...prev, { role: "assistant", content: assistantContent }];
-            });
+            setStreamingContent(assistantContent);
           }
         } catch {
           /* ignore */
         }
       }
     }
+
+    return assistantContent;
   }, [user?.id]);
 
   const sendMessage = async (messageText: string) => {
-    if (!messageText.trim() || isLoading) return;
+    if (!messageText.trim() || isStreaming) return;
 
-    const userMsg: Message = { role: "user", content: messageText.trim() };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    // Upload any file attachments first
+    const uploadedAttachments: { name: string; id?: string }[] = [];
+    if (attachments.length > 0) {
+      setLoadingAction("upload");
+      for (const attachment of attachments) {
+        if (attachment.type === "file" && attachment.file) {
+          try {
+            const doc = await uploadDocument.mutateAsync({
+              file: attachment.file,
+              segment: "other",
+              mode: mode as "work" | "personal",
+            });
+            uploadedAttachments.push({ name: attachment.name, id: doc.id });
+          } catch (error) {
+            console.error("Error uploading file:", error);
+          }
+        } else if (attachment.type === "document") {
+          uploadedAttachments.push({ name: attachment.name, id: attachment.documentId });
+        }
+      }
+    }
+
+    // Add user message to DB
+    const userContent = attachments.length > 0
+      ? `${messageText}\n\n[Fichiers joints: ${attachments.map(a => a.name).join(", ")}]`
+      : messageText;
+
+    await addMessage({ 
+      role: 'user', 
+      content: userContent.trim(),
+      attachments: uploadedAttachments,
+    });
+
     setInput("");
-    setIsLoading(true);
+    setAttachments([]);
+    setIsStreaming(true);
+    setStreamingContent("");
+    setLoadingAction("thinking");
 
     try {
-      await streamChat(newMessages);
+      // Build messages for API
+      const apiMessages = [
+        ...dbMessages.map(m => ({ role: m.role, content: m.content })),
+        { role: 'user', content: userContent.trim() },
+      ];
+
+      const assistantContent = await streamChat(apiMessages);
+      
+      // Save assistant response to DB
+      if (assistantContent) {
+        await addMessage({ 
+          role: 'assistant', 
+          content: assistantContent,
+        });
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur de connexion à Nova");
-      // Remove the failed assistant message if any
-      setMessages((prev) => {
-        if (prev[prev.length - 1]?.role === "assistant" && prev[prev.length - 1]?.content === "") {
-          return prev.slice(0, -1);
-        }
-        return prev;
-      });
     } finally {
-      setIsLoading(false);
+      setIsStreaming(false);
+      setStreamingContent("");
     }
   };
 
@@ -191,10 +278,19 @@ export default function Assistant() {
     sendMessage(input);
   };
 
+  const handleClearHistory = async () => {
+    try {
+      await clearHistory();
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
   const handleAnalyzeDocument = async () => {
     if (!latestDocument) return;
     
     try {
+      setLoadingAction("analyze");
       const result = await analyzeDocument.mutateAsync(latestDocument.id);
       setAnalysisResult(result);
       toast.success("Document analysé avec succès !");
@@ -223,15 +319,12 @@ export default function Assistant() {
               Ton copilote IA connecté à tes données pour atteindre 1M€
             </p>
           </div>
-          {messages.length > 0 && (
+          {dbMessages.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setMessages([]);
-                localStorage.removeItem(CHAT_STORAGE_KEY);
-                toast.success("Conversation effacée !");
-              }}
+              onClick={handleClearHistory}
+              disabled={isClearingHistory}
               className="gap-2 text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
@@ -243,108 +336,132 @@ export default function Assistant() {
         <div className="grid gap-6 lg:grid-cols-3 h-[calc(100%-5rem)]">
           {/* Chat Area */}
           <div className="lg:col-span-2 flex flex-col">
-            <GlassCard className="flex-1 flex flex-col p-6 overflow-hidden">
-              {/* Messages Area */}
-              <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
-                {messages.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8 min-h-[300px]">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 mb-4">
-                      <Bot className="h-8 w-8 text-primary" />
+            <UploadDropzone onFileDrop={handleFileDrop} disabled={isStreaming}>
+              <GlassCard className="flex-1 flex flex-col p-6 overflow-hidden h-full">
+                {/* Messages Area */}
+                <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
+                  {historyLoading ? (
+                    <div className="flex-1 flex items-center justify-center min-h-[300px]">
+                      <LoadingMessage action="query" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">Bienvenue, Nono 👋</h3>
-                    <p className="text-muted-foreground max-w-md mb-6">
-                      Je suis Nova, ton assistant IA personnel. J'ai accès à tes finances, 
-                      projets et tâches en temps réel pour t'aider à atteindre ton objectif 1M€.
-                    </p>
-                    
-                    {/* Quick actions */}
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {quickActions.map((suggestion) => (
-                        <Button
-                          key={suggestion}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                          onClick={() => sendMessage(suggestion)}
-                          disabled={isLoading}
-                        >
-                          {suggestion}
-                        </Button>
-                      ))}
+                  ) : displayMessages.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 min-h-[300px]">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 mb-4">
+                        <Bot className="h-8 w-8 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">Bienvenue, Nono 👋</h3>
+                      <p className="text-muted-foreground max-w-md mb-6">
+                        Je suis Nova, ton assistant IA personnel. J'ai accès à tes finances, 
+                        projets et tâches en temps réel pour t'aider à atteindre ton objectif 1M€.
+                      </p>
+                      
+                      {/* Quick actions */}
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {quickActions.map((suggestion) => (
+                          <Button
+                            key={suggestion}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => sendMessage(suggestion)}
+                            disabled={isStreaming}
+                          >
+                            {suggestion}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 py-4">
-                    {messages.map((msg, index) => (
-                      <div
-                        key={index}
-                        className={cn(
-                          "flex gap-3",
-                          msg.role === "user" ? "justify-end" : "justify-start"
-                        )}
-                      >
-                        {msg.role === "assistant" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
-                            <Bot className="h-4 w-4 text-primary" />
+                  ) : (
+                    <div className="space-y-4 py-4">
+                      {displayMessages.map((msg) => (
+                        <div key={msg.id}>
+                          <div
+                            className={cn(
+                              "flex gap-3",
+                              msg.role === "user" ? "justify-end" : "justify-start"
+                            )}
+                          >
+                            {msg.role === "assistant" && (
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
+                                <Bot className="h-4 w-4 text-primary" />
+                              </div>
+                            )}
+                            <div
+                              className={cn(
+                                "max-w-[80%] rounded-2xl px-4 py-3",
+                                msg.role === "user"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted/50 text-foreground"
+                              )}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">
+                                {msg.role === "assistant" 
+                                  ? removeActionsFromContent(msg.content)
+                                  : msg.content
+                                }
+                              </p>
+                            </div>
+                            {msg.role === "user" && (
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
+                                <User className="h-4 w-4 text-secondary-foreground" />
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <div
-                          className={cn(
-                            "max-w-[80%] rounded-2xl px-4 py-3",
-                            msg.role === "user"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted/50 text-foreground"
+                          
+                          {/* Action Cards for assistant messages */}
+                          {msg.role === "assistant" && msg.id !== 'streaming' && (
+                            <div className="ml-11">
+                              <ActionCardRenderer content={msg.content} />
+                            </div>
                           )}
-                        >
-                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                         </div>
-                        {msg.role === "user" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-                            <User className="h-4 w-4 text-secondary-foreground" />
-                          </div>
+                      ))}
+                      
+                      {/* Loading indicator */}
+                      <AnimatePresence>
+                        {isStreaming && !streamingContent && (
+                          <LoadingMessage action={loadingAction} />
                         )}
-                      </div>
-                    ))}
-                    {isLoading && messages[messages.length - 1]?.role === "user" && (
-                      <div className="flex gap-3 justify-start">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
-                          <Bot className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="bg-muted/50 rounded-2xl px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            <span className="text-sm text-muted-foreground">Nova réfléchit...</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </ScrollArea>
+                
+                {/* Attachment Preview */}
+                {attachments.length > 0 && (
+                  <div className="border-t border-border/50 pt-3 mt-3">
+                    <AttachmentPreview 
+                      attachments={attachments} 
+                      onRemove={removeAttachment}
+                    />
                   </div>
                 )}
-              </ScrollArea>
-              
-              {/* Input Area */}
-              <form onSubmit={handleSubmit} className="border-t border-border/50 pt-4 mt-4">
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="Pose ta question à Nova..."
-                    className="flex-1"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    disabled={isLoading}
-                  />
-                  <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                
+                {/* Input Area */}
+                <form onSubmit={handleSubmit} className="border-t border-border/50 pt-4 mt-4">
+                  <div className="flex gap-2">
+                    <AttachmentPicker
+                      onFileSelect={handleFileDrop}
+                      onDocumentSelect={handleDocumentSelect}
+                      disabled={isStreaming}
+                    />
+                    <Input 
+                      placeholder="Pose ta question à Nova..."
+                      className="flex-1"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      disabled={isStreaming}
+                    />
+                    <Button type="submit" size="icon" disabled={isStreaming || !input.trim()}>
                       <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Propulsé par Gemini · Données en temps réel
-                </p>
-              </form>
-            </GlassCard>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Propulsé par Gemini · Données en temps réel · Drag & Drop supporté
+                  </p>
+                </form>
+              </GlassCard>
+            </UploadDropzone>
           </div>
 
           {/* Capabilities Sidebar */}
@@ -393,7 +510,7 @@ export default function Assistant() {
                   <li key={index}>
                     <button
                       onClick={() => sendMessage(action)}
-                      disabled={isLoading}
+                      disabled={isStreaming}
                       className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left w-full flex items-center gap-2"
                     >
                       <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
