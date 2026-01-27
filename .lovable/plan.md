@@ -1,126 +1,124 @@
 
-# Plan : Generation Automatique de Rapports d'Import
+# Plan : Ajouter le bouton Historique des Imports dans la Roadmap
 
-## Objectif
+## Probleme identifie
 
-Ajouter la generation automatique de rapports Markdown apres chaque import de roadmap. Le rapport sera sauvegarde dans la table `documents` et apparaitra dans la section Documents du projet.
+Le composant `ImportHistoryDialog` n'existe pas et le bouton Historique n'est pas present dans `ProjectRoadmapWidget.tsx`.
 
 ## Fichiers a creer
 
-### 1. `src/utils/generateImportReport.ts`
+### 1. `src/components/project-workspace/ImportHistoryDialog.tsx`
 
-Nouveau fichier qui contient :
-- Interface `ImportReportData` avec les donnees du rapport
-- Fonction `generateImportReport()` qui genere le contenu Markdown
-- Fonction `generateReportTitle()` qui genere le titre du document
+Nouveau composant dialog qui affiche l'historique des rapports d'import de roadmap.
 
-Le rapport inclura :
-- En-tete avec nom du projet, date et utilisateur
-- Tableau resume (missions creees, modifiees, identiques)
-- Section detaillee des missions creees
-- Section detaillee des missions modifiees avec les changements (avant/apres)
-- Liste des missions identiques
-- Footer avec signature
+| Element | Description |
+|---------|-------------|
+| Props | `projectId`, `open`, `onOpenChange` |
+| Query | Recupere les documents avec `category: 'report'` |
+| Contenu | Liste des rapports avec date, nom, taille |
+| Actions | Telecharger le rapport (via signed URL) |
 
-### 2. `src/hooks/useSaveImportReport.ts`
+Structure du composant :
+```text
+Dialog
+  DialogHeader
+    - Titre : "Historique des Imports"
+    - Description : "Rapports generes lors des imports de roadmap"
+  
+  DialogContent
+    - ScrollArea avec liste des rapports
+    - Chaque rapport affiche :
+      - Icone FileText
+      - Nom du fichier
+      - Date de creation (formatee)
+      - Taille du fichier
+      - Bouton telecharger (Download)
+    
+    - Etat vide si aucun rapport
+```
 
-Nouveau hook React Query qui :
-- Cree un blob Markdown a partir du contenu
-- Upload le fichier dans le bucket Storage `documents`
-- Insere les metadonnees dans la table `documents`
-- Invalide le cache des documents
-- Affiche un toast de confirmation
+### 2. `src/hooks/useImportReports.ts`
 
-Parametres :
-- `projectId` : ID du projet
-- `reportTitle` : Titre du document
-- `reportContent` : Contenu Markdown
-- `userId` : ID de l'utilisateur
+Nouveau hook pour recuperer les rapports d'import d'un projet specifique.
+
+| Element | Description |
+|---------|-------------|
+| Input | `projectId` |
+| Query | Filtre documents avec `category = 'report'` et nom contenant le projectId |
+| Output | Liste des documents tries par date decroissante |
 
 ## Fichier a modifier
 
-### 3. `src/components/project-workspace/BulkImportMissionDialog.tsx`
+### 3. `src/components/project-workspace/ProjectRoadmapWidget.tsx`
 
-Modifications :
-1. Ajouter les imports necessaires
-2. Ajouter les hooks `useAuth` et `useSaveImportReport`
-3. Ajouter un hook `useProject` pour recuperer le nom du projet
-4. Modifier `handleSubmit` pour generer et sauvegarder le rapport apres l'import
+Modifications exactes demandees :
+
+1. **Imports a ajouter** (ligne 5) :
+   - `History` depuis lucide-react
+   - `ImportHistoryDialog` depuis `./ImportHistoryDialog`
+
+2. **State a ajouter** (ligne 19) :
+   ```typescript
+   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+   ```
+
+3. **Bouton Historique** (avant ligne 33, avant "Import Rapide") :
+   ```typescript
+   <Button 
+     onClick={() => setIsHistoryDialogOpen(true)}
+     size="sm"
+     variant="ghost"
+     className="gap-1.5 rounded-2xl"
+   >
+     <History className="h-4 w-4" />
+     <span className="hidden sm:inline">Historique</span>
+   </Button>
+   ```
+
+4. **Dialog a ajouter** (apres ligne 109, apres BulkImportMissionDialog) :
+   ```typescript
+   <ImportHistoryDialog
+     projectId={projectId}
+     open={isHistoryDialogOpen}
+     onOpenChange={setIsHistoryDialogOpen}
+   />
+   ```
+
+## Structure de ImportHistoryDialog
 
 ```text
-Flux de handleSubmit modifie :
-  1. Appliquer les missions (existant)
-  2. Afficher le toast de succes (existant)
-  3. Celebrer si > 3 missions (existant)
-  4. [NOUVEAU] Generer le rapport Markdown
-  5. [NOUVEAU] Sauvegarder dans Storage + documents
-  6. [NOUVEAU] Toast "Rapport enregistre dans les Documents"
-  7. Fermer le dialog (existant)
++-----------------------------------------------+
+|  Historique des Imports                    X  |
+|  Rapports generes lors des imports de roadmap |
++-----------------------------------------------+
+|                                               |
+|  +------------------------------------------+ |
+|  | FileText  rapport-import-2026-01-27.md   | |
+|  |           27 janv. 2026 - 2.4 KB         | |
+|  |                              [Download]  | |
+|  +------------------------------------------+ |
+|                                               |
+|  +------------------------------------------+ |
+|  | FileText  rapport-import-2026-01-26.md   | |
+|  |           26 janv. 2026 - 1.8 KB         | |
+|  |                              [Download]  | |
+|  +------------------------------------------+ |
+|                                               |
++-----------------------------------------------+
 ```
 
-## Compatibilite des types
+## Resume des fichiers
 
-Les instructions utilisent les types corrects deja presents dans le codebase :
-- `MissionDiff` depuis `./missionDiff`
-- `diff.type` (valeurs: `'create'`, `'update'`, `'identical'`)
-- `diff.parsedMission.title`, `diff.parsedMission.description`
-- `diff.changes.description.old` / `.new`
-- `diff.changes.estimatedDuration.old` / `.new`
-
-## Structure du rapport genere
-
-```text
-# Rapport d'Import de Roadmap
-
-**Projet :** [Nom du projet]
-**Date :** 27 janvier 2026 a 14h30
-**Importe par :** user@email.com
-
----
-
-## Resume
-
-| Action      | Nombre | Details                      |
-|-------------|--------|------------------------------|
-| Creees      | 5      | Nouvelles missions ajoutees  |
-| Modifiees   | 2      | Missions mises a jour        |
-| Identiques  | 3      | Aucune modification          |
-| TOTAL       | 10     | Missions traitees            |
-
----
-
-## MISSIONS CREEES (5)
-
-### 1. Gestion des utilisateurs
-**Description :** Authentification securisee...
-**Duree estimee :** 3h
-
-...
-
-## MISSIONS MODIFIEES (2)
-
-### 1. Tableau de bord
-**Description :**
-- Avant : Dashboard basique
-- Apres : Dashboard avec metriques avancees
-
-...
-```
-
-## Dependances existantes
-
-Tous les elements necessaires sont deja en place :
-- Table `documents` avec colonnes `category`, `segment`, `mode`
-- Bucket Storage `documents` configure
-- Hook `useAuth` pour l'utilisateur connecte
-- Hook `useProject` pour recuperer le nom du projet
-- Types `MissionDiff` compatibles
+| Fichier | Action |
+|---------|--------|
+| `src/hooks/useImportReports.ts` | CREER |
+| `src/components/project-workspace/ImportHistoryDialog.tsx` | CREER |
+| `src/components/project-workspace/ProjectRoadmapWidget.tsx` | MODIFIER |
 
 ## Resultat attendu
 
-Apres un import de roadmap :
-1. Missions creees/mises a jour
-2. Toast : "X missions creees - Y missions mises a jour"
-3. Toast : "Rapport enregistre dans les Documents"
-4. Le rapport apparait dans la section Documents du projet
-5. Le rapport peut etre telecharge et consulte
+Apres implementation :
+- Bouton "Historique" visible avant "Import Rapide" dans le header Roadmap
+- Click ouvre un dialog avec la liste des rapports d'import
+- Chaque rapport peut etre telecharge
+- Ordre chronologique inverse (plus recent en premier)
