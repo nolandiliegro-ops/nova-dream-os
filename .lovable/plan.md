@@ -1,86 +1,126 @@
 
-# Plan : Corriger les erreurs de build
+# Plan : Generation Automatique de Rapports d'Import
 
-## Analyse des erreurs
+## Objectif
 
-Les erreurs de build proviennent de 2 categories :
+Ajouter la generation automatique de rapports Markdown apres chaque import de roadmap. Le rapport sera sauvegarde dans la table `documents` et apparaitra dans la section Documents du projet.
 
-### Categorie 1 : Fichiers de rapport a supprimer (comme demande)
+## Fichiers a creer
 
-| Fichier | Probleme |
-|---------|----------|
-| `src/utils/generateImportReport.ts` | Import `MissionDiffResult` inexistant |
-| `src/hooks/useSaveImportReport.ts` | Import `@/lib/supabase` incorrect |
-| `BulkImportMissionDialog.tsx` | Imports et code lies aux rapports |
+### 1. `src/utils/generateImportReport.ts`
 
-### Categorie 2 : Code dependant de la migration SQL non deployee
+Nouveau fichier qui contient :
+- Interface `ImportReportData` avec les donnees du rapport
+- Fonction `generateImportReport()` qui genere le contenu Markdown
+- Fonction `generateReportTitle()` qui genere le titre du document
 
-| Fichier | Probleme |
-|---------|----------|
-| `useSoftDeleteMission.ts` | Utilise `deleted_at` et `deleted_by` |
-| `DeletedMissionsDialog.tsx` | Utilise `deleted_at` |
-| `useMissionHistory.ts` | Table `mission_history` inexistante |
-| `BulkImportMissionDialog.tsx` | Utilise `diff.action` au lieu de `diff.type` |
+Le rapport inclura :
+- En-tete avec nom du projet, date et utilisateur
+- Tableau resume (missions creees, modifiees, identiques)
+- Section detaillee des missions creees
+- Section detaillee des missions modifiees avec les changements (avant/apres)
+- Liste des missions identiques
+- Footer avec signature
 
-## Actions a realiser
+### 2. `src/hooks/useSaveImportReport.ts`
 
-### Etape 1 : Supprimer les fichiers de rapport
+Nouveau hook React Query qui :
+- Cree un blob Markdown a partir du contenu
+- Upload le fichier dans le bucket Storage `documents`
+- Insere les metadonnees dans la table `documents`
+- Invalide le cache des documents
+- Affiche un toast de confirmation
 
-Supprimer les 2 fichiers demandes qui causent des erreurs directes :
-- `src/utils/generateImportReport.ts`
-- `src/hooks/useSaveImportReport.ts`
+Parametres :
+- `projectId` : ID du projet
+- `reportTitle` : Titre du document
+- `reportContent` : Contenu Markdown
+- `userId` : ID de l'utilisateur
 
-### Etape 2 : Nettoyer BulkImportMissionDialog.tsx
+## Fichier a modifier
 
-Modifications dans ce fichier :
-- Supprimer les imports de `useSaveImportReport` et `generateImportReport`
-- Supprimer l'import de `useAuth`
-- Supprimer l'appel a `useSaveImportReport()` et `useAuth()`
-- Supprimer le bloc de generation et sauvegarde du rapport dans `handleSubmit`
-- Corriger la ligne 246 : utiliser `d.type === 'skip'` au lieu de `d.action === 'skip'`
+### 3. `src/components/project-workspace/BulkImportMissionDialog.tsx`
 
-### Etape 3 : Desactiver temporairement le soft delete et l'historique
-
-Ces fonctionnalites dependent de la migration SQL non encore deployee. Options :
-
-**Option A (recommandee)** : Commenter/neutraliser le code en attendant la migration
-- Modifier `useSoftDeleteMission.ts` pour utiliser une suppression classique
-- Modifier `useMissionHistory.ts` pour retourner un tableau vide
-- Modifier `DeletedMissionsDialog.tsx` pour ne pas acceder a `deleted_at`
-
-**Option B** : Supprimer completement ces fichiers
-- Necessite de retirer les imports dans les composants qui les utilisent
-
-Je recommande l'Option A car elle preserve le code pour quand la migration sera deployee.
-
-## Resume des modifications
+Modifications :
+1. Ajouter les imports necessaires
+2. Ajouter les hooks `useAuth` et `useSaveImportReport`
+3. Ajouter un hook `useProject` pour recuperer le nom du projet
+4. Modifier `handleSubmit` pour generer et sauvegarder le rapport apres l'import
 
 ```text
-Fichiers a SUPPRIMER :
-  src/utils/generateImportReport.ts
-  src/hooks/useSaveImportReport.ts
-
-Fichiers a MODIFIER :
-  src/components/project-workspace/BulkImportMissionDialog.tsx
-    - Retirer imports rapport + useAuth
-    - Retirer logique de rapport dans handleSubmit
-    - Corriger d.action -> d.type
-
-  src/hooks/useSoftDeleteMission.ts
-    - Remplacer deleted_at/deleted_by par suppression classique
-    - Retourner tableau vide pour useDeletedMissions
-
-  src/hooks/useMissionHistory.ts
-    - Retourner tableau vide (table inexistante)
-
-  src/components/project-workspace/DeletedMissionsDialog.tsx
-    - Adapter pour ne pas utiliser deleted_at
+Flux de handleSubmit modifie :
+  1. Appliquer les missions (existant)
+  2. Afficher le toast de succes (existant)
+  3. Celebrer si > 3 missions (existant)
+  4. [NOUVEAU] Generer le rapport Markdown
+  5. [NOUVEAU] Sauvegarder dans Storage + documents
+  6. [NOUVEAU] Toast "Rapport enregistre dans les Documents"
+  7. Fermer le dialog (existant)
 ```
+
+## Compatibilite des types
+
+Les instructions utilisent les types corrects deja presents dans le codebase :
+- `MissionDiff` depuis `./missionDiff`
+- `diff.type` (valeurs: `'create'`, `'update'`, `'identical'`)
+- `diff.parsedMission.title`, `diff.parsedMission.description`
+- `diff.changes.description.old` / `.new`
+- `diff.changes.estimatedDuration.old` / `.new`
+
+## Structure du rapport genere
+
+```text
+# Rapport d'Import de Roadmap
+
+**Projet :** [Nom du projet]
+**Date :** 27 janvier 2026 a 14h30
+**Importe par :** user@email.com
+
+---
+
+## Resume
+
+| Action      | Nombre | Details                      |
+|-------------|--------|------------------------------|
+| Creees      | 5      | Nouvelles missions ajoutees  |
+| Modifiees   | 2      | Missions mises a jour        |
+| Identiques  | 3      | Aucune modification          |
+| TOTAL       | 10     | Missions traitees            |
+
+---
+
+## MISSIONS CREEES (5)
+
+### 1. Gestion des utilisateurs
+**Description :** Authentification securisee...
+**Duree estimee :** 3h
+
+...
+
+## MISSIONS MODIFIEES (2)
+
+### 1. Tableau de bord
+**Description :**
+- Avant : Dashboard basique
+- Apres : Dashboard avec metriques avancees
+
+...
+```
+
+## Dependances existantes
+
+Tous les elements necessaires sont deja en place :
+- Table `documents` avec colonnes `category`, `segment`, `mode`
+- Bucket Storage `documents` configure
+- Hook `useAuth` pour l'utilisateur connecte
+- Hook `useProject` pour recuperer le nom du projet
+- Types `MissionDiff` compatibles
 
 ## Resultat attendu
 
-Apres ces modifications :
-- Zero erreur de build
-- Fonctionnalite d'import intelligent conservee et fonctionnelle
-- Soft delete et historique desactives temporairement (en attente de migration)
-- Code preserve pour reactivation facile apres migration SQL
+Apres un import de roadmap :
+1. Missions creees/mises a jour
+2. Toast : "X missions creees - Y missions mises a jour"
+3. Toast : "Rapport enregistre dans les Documents"
+4. Le rapport apparait dans la section Documents du projet
+5. Le rapport peut etre telecharge et consulte
