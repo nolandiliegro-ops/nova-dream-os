@@ -16,6 +16,9 @@ import { compareMissions, generateDiffSummary, MissionDiff } from "@/utils/missi
 import { MissionDiffPreview } from "./MissionDiffPreview";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { useSaveImportReport } from "@/hooks/useSaveImportReport";
+import { generateImportReport, generateReportTitle } from "@/utils/generateImportReport";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ParsedMission {
   title: string;
@@ -203,6 +206,9 @@ export function BulkImportMissionDialog({
     setShowDiffPreview(true);
   };
   
+  const { user } = useAuth();
+  const saveImportReport = useSaveImportReport();
+
   const handleSubmit = async () => {
     if (diffs.length === 0) return;
 
@@ -224,6 +230,31 @@ export function BulkImportMissionDialog({
 
       if (result.created + result.updated > 3) {
         triggerBulkCelebration(result.created + result.updated);
+      }
+
+      // Générer et sauvegarder le rapport automatiquement
+      if (user) {
+        const importDate = new Date();
+        const reportTitle = generateReportTitle(projectId, importDate);
+        const reportContent = generateImportReport({
+          projectName: projectId,
+          importDate,
+          importedBy: user.email || 'Utilisateur',
+          summary: {
+            created: result.created,
+            updated: result.updated,
+            identical: diffs.filter(d => d.action === 'skip').length,
+            total: diffs.length,
+          },
+          diffs,
+        });
+
+        await saveImportReport.mutateAsync({
+          projectId,
+          reportTitle,
+          reportContent,
+          userId: user.id,
+        });
       }
 
       setRawText("");
