@@ -261,7 +261,8 @@ export function BulkImportMissionDialog({
       setRawText("");
       setShowDiffPreview(false);
       onOpenChange(false);
-    } catch {
+    } catch (error) {
+      console.error("Erreur lors de l'import (bulk + rapport éventuel):", error);
       toast.error("Erreur lors de l'import");
     }
   };
