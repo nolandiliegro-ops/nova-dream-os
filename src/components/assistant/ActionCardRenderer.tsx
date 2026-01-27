@@ -131,7 +131,6 @@ export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
           await createNote.mutateAsync({
             title: action.params.title || "Nouvelle note",
             content: action.params.content || "",
-            is_pinned: false,
             color: "yellow",
           });
           toast.success(`Note "${action.params.title}" créée !`);

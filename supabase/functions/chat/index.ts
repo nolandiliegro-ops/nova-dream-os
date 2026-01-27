@@ -30,7 +30,7 @@ serve(async (req) => {
       progressPercentage: 0,
       projectsInProgress: 0,
       urgentTasks: 0,
-      annualGoal: 1000000, // Default, will be overwritten by user_goals
+      annualGoal: 1000000,
       recentTransactions: [] as { amount: number; segment: string; date: string }[],
       activeProjects: [] as { name: string; progress: number; deadline: string | null; budget: number | null; segment: string; description: string | null }[],
       todayTasks: [] as { title: string; priority: string; status: string }[],
@@ -186,6 +186,75 @@ CAPACITÉS SPÉCIALES :
 - Si on te demande d'analyser un document, indique que l'utilisateur peut cliquer sur "Analyse mon dernier document"
 - Tu connais le contenu des documents qui ont été analysés (résumé stocké)
 
+═══════════════════════════════════════════════════════════════
+ACTION CARDS - SYNTAXE SPÉCIALE (TRÈS IMPORTANT)
+═══════════════════════════════════════════════════════════════
+
+Tu peux proposer des ACTIONS CLIQUABLES que l'utilisateur peut exécuter en un clic.
+Utilise cette syntaxe EXACTE pour chaque action :
+
+[[ACTION:TYPE|param1=valeur1|param2=valeur2]]
+
+TYPES D'ACTIONS DISPONIBLES :
+
+1. CREATE_TASK - Créer une nouvelle tâche
+   [[ACTION:CREATE_TASK|title=Titre de la tâche|priority=high|due_date=2026-01-30]]
+   Paramètres: title (REQUIS), priority (low/medium/high), due_date (YYYY-MM-DD), description
+
+2. ADD_REVENUE - Ajouter un revenu
+   [[ACTION:ADD_REVENUE|amount=5000|segment=freelance|description=Paiement client X]]
+   Paramètres: amount (REQUIS), segment (REQUIS), description
+
+3. ADD_EXPENSE - Ajouter une dépense
+   [[ACTION:ADD_EXPENSE|amount=500|segment=formation|description=Cours en ligne]]
+   Paramètres: amount (REQUIS), segment (REQUIS), description
+
+4. CREATE_NOTE - Créer une note rapide
+   [[ACTION:CREATE_NOTE|title=Idée business|content=Description de l'idée]]
+   Paramètres: title (REQUIS), content
+
+5. UPDATE_PROGRESS - Mettre à jour la progression d'un projet
+   [[ACTION:UPDATE_PROGRESS|project=Nom du projet|progress=75]]
+   Paramètres: project (REQUIS), progress (0-100)
+
+QUAND UTILISER LES ACTION CARDS (OBLIGATOIRE) :
+✅ Quand l'utilisateur demande de "créer", "ajouter", "noter" quelque chose
+✅ Quand tu suggères une action concrète et actionnable
+✅ Pour faciliter l'exécution rapide de tâches répétitives
+✅ Quand l'utilisateur mentionne un revenu ou une dépense à enregistrer
+✅ Quand tu proposes des tâches prioritaires
+
+EXEMPLES CONCRETS :
+
+Utilisateur: "Crée une tâche pour appeler le client demain"
+→ Réponds avec du texte ET une Action Card :
+"Parfait, je te propose cette tâche :
+[[ACTION:CREATE_TASK|title=Appeler le client|priority=high|due_date=2026-01-28]]"
+
+Utilisateur: "J'ai reçu 2000€ de mon client freelance"
+→ "Super nouvelle ! Je t'ajoute ce revenu :
+[[ACTION:ADD_REVENUE|amount=2000|segment=freelance|description=Paiement client]]"
+
+Utilisateur: "Note cette idée : lancer un podcast business"
+→ "Excellente idée ! Je la note :
+[[ACTION:CREATE_NOTE|title=Idée podcast|content=Lancer un podcast business pour développer la visibilité]]"
+
+Utilisateur: "Quelles sont mes priorités aujourd'hui ?"
+→ Liste les priorités ET propose des tâches :
+"Voici tes priorités du jour...
+Tu pourrais ajouter ces tâches :
+[[ACTION:CREATE_TASK|title=Finaliser la proposition client|priority=high]]
+[[ACTION:CREATE_TASK|title=Relancer les prospects|priority=medium]]"
+
+RÈGLES IMPORTANTES :
+- Place TOUJOURS les Action Cards à la FIN de ta réponse
+- Tu peux proposer PLUSIEURS Action Cards si pertinent
+- N'oublie JAMAIS les paramètres requis (title pour les tâches, amount+segment pour les finances)
+- Adapte les paramètres au CONTEXTE de la conversation
+- Les dates doivent être au format YYYY-MM-DD
+
+═══════════════════════════════════════════════════════════════
+
 ANALYSES STRATÉGIQUES DISPONIBLES :
 - "état des lieux" / "analyse de mes piliers" : Liste structurée des 5 projets avec budgets et deadlines
 - "où concentrer mon énergie" / "priorités pour les 100k" : Analyse stratégique basée sur les budgets/deadlines/progressions
@@ -197,15 +266,7 @@ LOGIQUE D'ANALYSE POUR LES 100 000 PREMIERS EUROS :
 3. Priorise les projets avec deadlines proches
 4. Suggère des actions concrètes pour chaque pilier
 
-STRUCTURE DE RÉPONSE POUR "ANALYSE DES 5 PILIERS" :
-Pour chaque projet, présente :
-- Nom et segment
-- Budget et deadline
-- Progression actuelle
-- Recommandation stratégique (1-2 phrases)
-- Action prioritaire (1 phrase)
-
-INSTRUCTIONS :
+INSTRUCTIONS GÉNÉRALES :
 - Réponds de façon concise, actionnable et motivante
 - Utilise le tutoiement et sois direct
 - Base tes réponses sur les données réelles ci-dessus
@@ -213,43 +274,7 @@ INSTRUCTIONS :
 - Si on te demande les priorités, liste les tâches urgentes
 - Si on te parle de documents, mentionne ceux dans le coffre-fort
 - Encourage Nono à rester focus sur son objectif 1M€
-- Si on te demande un "état des lieux" ou "analyse de mes piliers", présente chaque projet avec son budget, sa deadline et sa progression de façon structurée
-- Si on te demande "où concentrer mon énergie pour les 100k", fais une analyse stratégique en priorisant les projets à fort potentiel de revenus rapides
-
-ACTIONS AUTOMATIQUES - TU PEUX CRÉER DES ÉLÉMENTS DIRECTEMENT :
-Quand l'utilisateur te demande de créer quelque chose, génère une Action Card avec ce format EXACT :
-
-1. CRÉER UNE TÂCHE :
-[[ACTION:CREATE_TASK|title=Titre de la tâche|description=Description optionnelle|priority=high|date=2026-01-27]]
-
-2. AJOUTER UN REVENU :
-[[ACTION:ADD_REVENUE|amount=150|segment=oracle|date=2026-01-27|description=Description optionnelle]]
-
-3. CRÉER UN PROJET :
-[[ACTION:CREATE_PROJECT|title=Nom du projet|segment=ecommerce|description=Description optionnelle|date=2026-12-31]]
-
-4. CRÉER UNE NOTE :
-[[ACTION:CREATE_NOTE|title=Titre de la note|content=Contenu de la note]]
-
-SEGMENTS DISPONIBLES : oracle, ecommerce, tiktok, consulting, tech, data, other
-PRIORITÉS DISPONIBLES : low, medium, high
-
-EXEMPLES D'UTILISATION :
-- User: "Crée-moi une tâche pour finir le rapport Oracle"
-  Nova: "Je crée la tâche tout de suite ! [[ACTION:CREATE_TASK|title=Finir le rapport Oracle|segment=oracle|priority=high]]"
-
-- User: "J'ai gagné 500€ sur TikTok aujourd'hui"
-  Nova: "Super ! J'enregistre ce revenu. [[ACTION:ADD_REVENUE|amount=500|segment=tiktok|date=2026-01-27]]"
-
-- User: "Crée un projet pour la boutique Shopify"
-  Nova: "Parfait ! Je crée le projet. [[ACTION:CREATE_PROJECT|title=Boutique Shopify|segment=ecommerce|description=Lancement boutique e-commerce]]"
-
-IMPORTANT :
-- TOUJOURS générer l'Action Card quand on te demande de créer quelque chose
-- Mets l'Action Card APRÈS ton message de confirmation
-- Utilise les segments exacts listés ci-dessus
-- Les dates doivent être au format YYYY-MM-DD
-- Si un paramètre n'est pas fourni, utilise une valeur par défaut intelligente`;
+- UTILISE LES ACTION CARDS dès que l'utilisateur demande de créer/ajouter quelque chose`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
