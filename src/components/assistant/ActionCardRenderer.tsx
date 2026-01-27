@@ -8,6 +8,7 @@ import { useCreateNote } from "@/hooks/useNotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { extractDateOrToday } from "@/utils/extractDateFromContext";
 
 interface ParsedAction {
   id: string;
@@ -81,8 +82,9 @@ export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
     try {
       switch (action.type) {
         case "CREATE_TASK":
-          // Force la date du jour si aucune date n'est fournie
-          const taskDate = action.params.date || new Date().toISOString().split('T')[0];
+          // Extraire la date du contexte du message (ex: "samedi (date: 2026-01-31)")
+          // Si Nova n'a pas mis la date dans l'Action Card, on l'extrait du message
+          const taskDate = action.params.date || extractDateOrToday(content);
           await createTask.mutateAsync({
             title: action.params.title || "Nouvelle tâche",
             mode: "work",
