@@ -16,6 +16,10 @@ import { compareMissions, generateDiffSummary } from "@/utils/missionDiff";
 import { MissionDiffPreview } from "./MissionDiffPreview";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { useSaveImportReport } from "@/hooks/useSaveImportReport";
+import { generateImportReport, generateReportTitle } from "@/utils/generateImportReport";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/hooks/useProjects";
 
 interface ParsedMission {
   title: string;
@@ -187,6 +191,9 @@ export function BulkImportMissionDialog({
   const [showDiffPreview, setShowDiffPreview] = useState(false);
   const bulkUpdateMissions = useBulkUpdateMissions();
   const { data: existingMissions = [] } = useMissions(projectId);
+  const { user } = useAuth();
+  const saveImportReport = useSaveImportReport();
+  const { data: project } = useProject(projectId);
 
   const parsedMissions = useMemo(() => parseStructuredRoadmap(rawText), [rawText]);
   
@@ -223,6 +230,32 @@ export function BulkImportMissionDialog({
 
       if (result.created + result.updated > 3) {
         triggerBulkCelebration(result.created + result.updated);
+      }
+
+      // Générer et sauvegarder le rapport automatiquement
+      if (user) {
+        const importDate = new Date();
+        const projectName = project?.name || projectId;
+        const reportTitle = generateReportTitle(projectName, importDate);
+        const reportContent = generateImportReport({
+          projectName,
+          importDate,
+          importedBy: user.email || 'Utilisateur',
+          summary: {
+            created: result.created,
+            updated: result.updated,
+            identical: diffs.filter(d => d.type === 'identical').length,
+            total: diffs.length,
+          },
+          diffs,
+        });
+
+        await saveImportReport.mutateAsync({
+          projectId,
+          reportTitle,
+          reportContent,
+          userId: user.id,
+        });
       }
 
       setRawText("");
