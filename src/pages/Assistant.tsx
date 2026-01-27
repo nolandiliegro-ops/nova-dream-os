@@ -17,6 +17,7 @@ import { AttachmentPicker } from "@/components/assistant/AttachmentPicker";
 import { AttachmentPreview, type Attachment } from "@/components/assistant/AttachmentPreview";
 import { LoadingMessage, type LoadingAction } from "@/components/assistant/LoadingMessage";
 import { ActionCardRenderer, removeActionsFromContent } from "@/components/assistant/ActionCardRenderer";
+import { replaceDatesInText } from "@/utils/dateParser";
 import { useUploadDocument } from "@/hooks/useDocuments";
 import { AnimatePresence } from "framer-motion";
 
@@ -210,6 +211,9 @@ export default function Assistant() {
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim() || isStreaming) return;
 
+    // Parse dates in French and replace them with ISO format
+    const processedMessage = replaceDatesInText(messageText);
+
     // Upload any file attachments first
     const uploadedAttachments: { name: string; id?: string }[] = [];
     if (attachments.length > 0) {
@@ -234,8 +238,8 @@ export default function Assistant() {
 
     // Add user message to DB
     const userContent = attachments.length > 0
-      ? `${messageText}\n\n[Fichiers joints: ${attachments.map(a => a.name).join(", ")}]`
-      : messageText;
+      ? `${processedMessage}\n\n[Fichiers joints: ${attachments.map(a => a.name).join(", ")}]`
+      : processedMessage;
 
     await addMessage({ 
       role: 'user', 
