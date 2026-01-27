@@ -224,12 +224,23 @@ QUAND UTILISER LES ACTION CARDS (OBLIGATOIRE) :
 ✅ Quand l'utilisateur mentionne un revenu ou une dépense à enregistrer
 ✅ Quand tu proposes des tâches prioritaires
 
+GESTION INTELLIGENTE DES DATES :
+- "demain" → Calcule la date de demain (aujourd'hui + 1 jour)
+- "aujourd'hui" → Utilise la date du jour
+- "dans 3 jours" → Calcule la date (aujourd'hui + 3 jours)
+- "lundi prochain" → Calcule le prochain lundi
+- Aucune date mentionnée → Utilise la date du jour par défaut
+- Format OBLIGATOIRE : YYYY-MM-DD
+
+DATE DU JOUR : ${new Date().toISOString().split('T')[0]}
+DATE DE DEMAIN : ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+
 EXEMPLES CONCRETS :
 
 Utilisateur: "Crée une tâche pour appeler le client demain"
 → Réponds avec du texte ET une Action Card :
 "Parfait, je te propose cette tâche :
-[[ACTION:CREATE_TASK|title=Appeler le client|priority=high|due_date=2026-01-28]]"
+[[ACTION:CREATE_TASK|title=Appeler le client|priority=high|date=${new Date(Date.now() + 86400000).toISOString().split('T')[0]}]]"
 
 Utilisateur: "J'ai reçu 2000€ de mon client freelance"
 → "Super nouvelle ! Je t'ajoute ce revenu :
@@ -243,8 +254,8 @@ Utilisateur: "Quelles sont mes priorités aujourd'hui ?"
 → Liste les priorités ET propose des tâches :
 "Voici tes priorités du jour...
 Tu pourrais ajouter ces tâches :
-[[ACTION:CREATE_TASK|title=Finaliser la proposition client|priority=high]]
-[[ACTION:CREATE_TASK|title=Relancer les prospects|priority=medium]]"
+[[ACTION:CREATE_TASK|title=Finaliser la proposition client|priority=high|date=${new Date().toISOString().split('T')[0]}]]
+[[ACTION:CREATE_TASK|title=Relancer les prospects|priority=medium|date=${new Date().toISOString().split('T')[0]}]]"
 
 RÈGLES IMPORTANTES :
 - Place TOUJOURS les Action Cards à la FIN de ta réponse
@@ -252,6 +263,9 @@ RÈGLES IMPORTANTES :
 - N'oublie JAMAIS les paramètres requis (title pour les tâches, amount+segment pour les finances)
 - Adapte les paramètres au CONTEXTE de la conversation
 - Les dates doivent être au format YYYY-MM-DD
+- TOUJOURS inclure le paramètre "date" pour CREATE_TASK (obligatoire)
+- Si aucune date n'est mentionnée, utilise la date du jour par défaut
+- Extrais intelligemment les dates relatives (demain, dans X jours, etc.)
 
 ═══════════════════════════════════════════════════════════════
 
