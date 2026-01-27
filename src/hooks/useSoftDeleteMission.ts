@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Soft delete mission - temporarily using hard delete until migration is deployed
+ * TODO: Revert to soft delete after migration with deleted_at/deleted_by columns
+ */
 export const useSoftDeleteMission = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -11,12 +15,10 @@ export const useSoftDeleteMission = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
+      // Hard delete for now (migration not deployed)
       const { error } = await supabase
         .from("missions")
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by: user.id,
-        })
+        .delete()
         .eq("id", missionId);
 
       if (error) throw error;
@@ -27,7 +29,7 @@ export const useSoftDeleteMission = () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast({
         title: "Mission supprimée",
-        description: "La mission a été déplacée dans la corbeille. Vous pouvez la restaurer pendant 30 jours.",
+        description: "La mission a été supprimée.",
       });
     },
     onError: (error: Error) => {
@@ -41,30 +43,12 @@ export const useSoftDeleteMission = () => {
 };
 
 export const useRestoreMission = () => {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (missionId: string) => {
-      const { error } = await supabase
-        .from("missions")
-        .update({
-          deleted_at: null,
-          deleted_by: null,
-        })
-        .eq("id", missionId);
-
-      if (error) throw error;
-      return missionId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["missions"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["deleted-missions"] });
-      toast({
-        title: "Mission restaurée",
-        description: "La mission et ses tâches ont été restaurées avec succès.",
-      });
+    mutationFn: async (_missionId: string) => {
+      // Disabled until migration is deployed
+      throw new Error("Fonctionnalité non disponible - migration SQL requise");
     },
     onError: (error: Error) => {
       toast({
@@ -108,27 +92,15 @@ export const usePermanentDeleteMission = () => {
   });
 };
 
-export const useDeletedMissions = (projectId?: string) => {
+/**
+ * Returns empty array - soft delete not available until migration is deployed
+ */
+export const useDeletedMissions = (_projectId?: string) => {
   return useQuery({
-    queryKey: ["deleted-missions", projectId],
+    queryKey: ["deleted-missions", _projectId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      let query = supabase
-        .from("missions")
-        .select("*")
-        .eq("user_id", user.id)
-        .not("deleted_at", "is", null)
-        .order("deleted_at", { ascending: false });
-
-      if (projectId) {
-        query = query.eq("project_id", projectId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      // Return empty array - migration not deployed yet
+      return [];
     },
   });
 };
