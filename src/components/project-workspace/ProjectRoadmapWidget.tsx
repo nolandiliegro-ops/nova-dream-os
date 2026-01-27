@@ -2,11 +2,12 @@ import { useState } from "react";
 import { GlassCard } from "@/components/dashboard/GlassCard";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Map, Plus, Loader2, FileText } from "lucide-react";
+import { Map, Plus, Loader2, FileText, History } from "lucide-react";
 import { useMissionsWithProgress } from "@/hooks/useMissions";
 import { MissionCard } from "./MissionCard";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { BulkImportMissionDialog } from "./BulkImportMissionDialog";
+import { ImportHistoryDialog } from "./ImportHistoryDialog";
 
 interface ProjectRoadmapWidgetProps {
   projectId: string;
@@ -17,6 +18,7 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
   const { data: missions, isLoading } = useMissionsWithProgress(projectId);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
 
   return (
     <GlassCard className="p-5 h-full flex flex-col">
@@ -30,6 +32,15 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setIsHistoryDialogOpen(true)}
+            size="sm"
+            variant="ghost"
+            className="gap-1.5 rounded-2xl"
+          >
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">Historique</span>
+          </Button>
           <Button 
             onClick={() => setIsBulkDialogOpen(true)}
             size="sm"
@@ -106,6 +117,12 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
         projectId={projectId}
         open={isBulkDialogOpen}
         onOpenChange={setIsBulkDialogOpen}
+      />
+
+      <ImportHistoryDialog
+        projectId={projectId}
+        open={isHistoryDialogOpen}
+        onOpenChange={setIsHistoryDialogOpen}
       />
     </GlassCard>
   );
