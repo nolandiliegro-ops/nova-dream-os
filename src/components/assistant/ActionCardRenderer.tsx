@@ -4,6 +4,7 @@ import { ActionCard, ActionType, ActionParams } from "./ActionCard";
 import { useCreateTask } from "@/hooks/useTasks";
 import { useCreateTransaction } from "@/hooks/useTransactions";
 import { useCreateProject } from "@/hooks/useProjects";
+import { useCreateNote } from "@/hooks/useNotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -59,6 +60,7 @@ export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
   const createTask = useCreateTask();
   const createTransaction = useCreateTransaction();
   const createProject = useCreateProject();
+  const createNote = useCreateNote();
 
   const [executingActions, setExecutingActions] = useState<Set<string>>(new Set());
   const [executedActions, setExecutedActions] = useState<Set<string>>(new Set());
@@ -124,6 +126,16 @@ export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
           });
           toast.success(`Projet "${action.params.title}" créé !`);
           break;
+
+        case "CREATE_NOTE":
+          await createNote.mutateAsync({
+            title: action.params.title || "Nouvelle note",
+            content: action.params.content || "",
+            is_pinned: false,
+            color: "yellow",
+          });
+          toast.success(`Note "${action.params.title}" créée !`);
+          break;
       }
 
       setExecutedActions((prev) => new Set(prev).add(action.id));
@@ -137,7 +149,7 @@ export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
         return next;
       });
     }
-  }, [user, createTask, createTransaction, createProject]);
+  }, [user, createTask, createTransaction, createProject, createNote]);
 
   const handleCancel = useCallback((actionId: string) => {
     setDismissedActions((prev) => new Set(prev).add(actionId));

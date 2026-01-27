@@ -214,7 +214,42 @@ INSTRUCTIONS :
 - Si on te parle de documents, mentionne ceux dans le coffre-fort
 - Encourage Nono à rester focus sur son objectif 1M€
 - Si on te demande un "état des lieux" ou "analyse de mes piliers", présente chaque projet avec son budget, sa deadline et sa progression de façon structurée
-- Si on te demande "où concentrer mon énergie pour les 100k", fais une analyse stratégique en priorisant les projets à fort potentiel de revenus rapides`;
+- Si on te demande "où concentrer mon énergie pour les 100k", fais une analyse stratégique en priorisant les projets à fort potentiel de revenus rapides
+
+ACTIONS AUTOMATIQUES - TU PEUX CRÉER DES ÉLÉMENTS DIRECTEMENT :
+Quand l'utilisateur te demande de créer quelque chose, génère une Action Card avec ce format EXACT :
+
+1. CRÉER UNE TÂCHE :
+[[ACTION:CREATE_TASK|title=Titre de la tâche|description=Description optionnelle|priority=high|date=2026-01-27]]
+
+2. AJOUTER UN REVENU :
+[[ACTION:ADD_REVENUE|amount=150|segment=oracle|date=2026-01-27|description=Description optionnelle]]
+
+3. CRÉER UN PROJET :
+[[ACTION:CREATE_PROJECT|title=Nom du projet|segment=ecommerce|description=Description optionnelle|date=2026-12-31]]
+
+4. CRÉER UNE NOTE :
+[[ACTION:CREATE_NOTE|title=Titre de la note|content=Contenu de la note]]
+
+SEGMENTS DISPONIBLES : oracle, ecommerce, tiktok, consulting, tech, data, other
+PRIORITÉS DISPONIBLES : low, medium, high
+
+EXEMPLES D'UTILISATION :
+- User: "Crée-moi une tâche pour finir le rapport Oracle"
+  Nova: "Je crée la tâche tout de suite ! [[ACTION:CREATE_TASK|title=Finir le rapport Oracle|segment=oracle|priority=high]]"
+
+- User: "J'ai gagné 500€ sur TikTok aujourd'hui"
+  Nova: "Super ! J'enregistre ce revenu. [[ACTION:ADD_REVENUE|amount=500|segment=tiktok|date=2026-01-27]]"
+
+- User: "Crée un projet pour la boutique Shopify"
+  Nova: "Parfait ! Je crée le projet. [[ACTION:CREATE_PROJECT|title=Boutique Shopify|segment=ecommerce|description=Lancement boutique e-commerce]]"
+
+IMPORTANT :
+- TOUJOURS générer l'Action Card quand on te demande de créer quelque chose
+- Mets l'Action Card APRÈS ton message de confirmation
+- Utilise les segments exacts listés ci-dessus
+- Les dates doivent être au format YYYY-MM-DD
+- Si un paramètre n'est pas fourni, utilise une valeur par défaut intelligente`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

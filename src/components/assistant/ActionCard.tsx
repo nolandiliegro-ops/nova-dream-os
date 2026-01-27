@@ -5,12 +5,13 @@ import {
   ListTodo, 
   DollarSign, 
   FolderPlus,
+  StickyNote,
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type ActionType = "CREATE_TASK" | "ADD_REVENUE" | "CREATE_PROJECT";
+export type ActionType = "CREATE_TASK" | "ADD_REVENUE" | "CREATE_PROJECT" | "CREATE_NOTE";
 
 export interface ActionParams {
   title?: string;
@@ -19,6 +20,7 @@ export interface ActionParams {
   priority?: string;
   date?: string;
   description?: string;
+  content?: string;
 }
 
 interface ActionCardProps {
@@ -49,6 +51,11 @@ const actionConfigs: Record<ActionType, {
     icon: FolderPlus,
     title: "Créer un projet",
     color: "text-purple-500",
+  },
+  CREATE_NOTE: {
+    icon: StickyNote,
+    title: "Créer une note",
+    color: "text-yellow-500",
   },
 };
 
