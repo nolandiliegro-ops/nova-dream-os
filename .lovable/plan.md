@@ -1,45 +1,81 @@
 
+# Plan : Déployer la migration Soft Delete & History
 
-# Plan V5.1 Final : Exécution de la Migration SQL Manus
+## Analyse du problème
 
-## Contexte
+Les erreurs de build indiquent que la base de données n'a pas les structures attendues par le code :
 
-L'analyse du code montre que **toutes les protections côté application sont déjà en place**. La seule étape manquante est l'exécution de la migration SQL de Manus pour ajouter une contrainte UNIQUE au niveau de la base de données.
+| Erreur | Cause |
+|--------|-------|
+| `deleted_at` does not exist on missions | Colonne non créée |
+| `mission_history` table not found | Table non créée |
+| Type conversion errors | Types TypeScript désynchronisés |
 
-## Actions à réaliser
+Le fichier `20260127_soft_delete_and_history.sql` existe mais n'a pas été exécuté sur la base de données.
 
-### 1. Exécuter la migration SQL de Manus
+## Migration SQL a deployer
 
-Appliquer la contrainte `UNIQUE (user_id, title)` sur la table `habits` pour garantir qu'aucun doublon ne peut être créé, même en cas de bug ou d'attaque directe sur l'API.
+La migration ajoute les elements suivants :
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│                    MIGRATION SQL                        │
-├─────────────────────────────────────────────────────────┤
-│ 1. DELETE doublons existants (aucun actuellement)       │
-│ 2. ADD CONSTRAINT habits_user_id_title_unique           │
-│ 3. CREATE INDEX idx_habits_user_id_title                │
-└─────────────────────────────────────────────────────────┘
+missions table                    tasks table
++-----------------+              +-----------------+
+| + deleted_at    |              | + deleted_at    |
+| + deleted_by    |              | + deleted_by    |
++-----------------+              +-----------------+
+        |
+        v
+mission_history table (nouvelle)
++---------------------+
+| id                  |
+| mission_id (FK)     |
+| user_id             |
+| action              |
+| previous_* fields   |
+| new_* fields        |
+| changed_fields[]    |
+| created_at          |
++---------------------+
 ```
 
-### 2. Vérification finale
+## Actions a realiser
 
-Confirmer que :
-- La contrainte UNIQUE est bien active
-- Le widget affiche `max-h-[350px]` avec scroll
-- Les 4 habitudes par défaut se créent correctement
+### 1. Executer la migration SQL
 
-## Résumé technique
+Appliquer le contenu du fichier `20260127_soft_delete_and_history.sql` qui contient :
 
-| Fichier | Action |
-|---------|--------|
-| `habits` (table Supabase) | Ajouter contrainte UNIQUE + index |
+- **Colonnes soft delete** : Ajout de `deleted_at` et `deleted_by` aux tables `missions` et `tasks`
+- **Table mission_history** : Creation avec toutes les colonnes pour tracker l'historique
+- **Index de performance** : 4 index pour optimiser les requetes
+- **Politiques RLS** : Securite pour la table `mission_history`
+- **Triggers automatiques** :
+  - `track_mission_changes_trigger` : Enregistre automatiquement les modifications
+  - `soft_delete_mission_tasks_trigger` : Cascade soft delete missions vers tasks
+- **Politiques RLS modifiees** : Exclure les elements supprimes par defaut
+- **Fonction de nettoyage** : Suppression definitive apres 30 jours
 
-## Résultat attendu
+### 2. Regeneration des types TypeScript
 
-Une fois la migration exécutée :
-- Impossible de créer des doublons au niveau base de données
-- Protection double : code + base de données
-- Dashboard stable avec widget compact et scrollable
-- Synchronisation instantanée Settings ↔ Dashboard
+Apres la migration, les types Supabase seront automatiquement regeneres pour inclure :
+- `deleted_at` et `deleted_by` sur `missions`
+- `deleted_at` et `deleted_by` sur `tasks`
+- La table `mission_history` complete
 
+### 3. Verification des hooks
+
+Les hooks existants fonctionneront correctement une fois la migration appliquee :
+- `useSoftDeleteMission.ts` : Utilise `deleted_at` et `deleted_by`
+- `useMissionHistory.ts` : Interroge la table `mission_history`
+- `DeletedMissionsDialog.tsx` : Affiche les missions supprimees
+
+## Resultat attendu
+
+Une fois la migration deployee :
+- Suppression douce des missions avec restauration possible pendant 30 jours
+- Historique complet des modifications trackees automatiquement
+- Cascade soft delete : supprimer une mission supprime aussi ses taches
+- Interface corbeille fonctionnelle dans le projet workspace
+
+## Note technique
+
+La migration sera executee via l'outil de migration de base de donnees qui demandera une approbation avant execution.
