@@ -10,15 +10,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, FileText, Sparkles, Target, Timer } from "lucide-react";
-import { useCreateMissionsFromTemplate, useMissions } from "@/hooks/useMissions";
+import { useMissions } from "@/hooks/useMissions";
 import { useBulkUpdateMissions } from "@/hooks/useBulkUpdateMissions";
-import { compareMissions, generateDiffSummary, MissionDiff } from "@/utils/missionDiff";
+import { compareMissions, generateDiffSummary } from "@/utils/missionDiff";
 import { MissionDiffPreview } from "./MissionDiffPreview";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { useSaveImportReport } from "@/hooks/useSaveImportReport";
-import { generateImportReport, generateReportTitle } from "@/utils/generateImportReport";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface ParsedMission {
   title: string;
@@ -188,7 +185,6 @@ export function BulkImportMissionDialog({
 }: BulkImportMissionDialogProps) {
   const [rawText, setRawText] = useState("");
   const [showDiffPreview, setShowDiffPreview] = useState(false);
-  const createMissions = useCreateMissionsFromTemplate();
   const bulkUpdateMissions = useBulkUpdateMissions();
   const { data: existingMissions = [] } = useMissions(projectId);
 
@@ -206,9 +202,6 @@ export function BulkImportMissionDialog({
     setShowDiffPreview(true);
   };
   
-  const { user } = useAuth();
-  const saveImportReport = useSaveImportReport();
-
   const handleSubmit = async () => {
     if (diffs.length === 0) return;
 
@@ -230,31 +223,6 @@ export function BulkImportMissionDialog({
 
       if (result.created + result.updated > 3) {
         triggerBulkCelebration(result.created + result.updated);
-      }
-
-      // Générer et sauvegarder le rapport automatiquement
-      if (user) {
-        const importDate = new Date();
-        const reportTitle = generateReportTitle(projectId, importDate);
-        const reportContent = generateImportReport({
-          projectName: projectId,
-          importDate,
-          importedBy: user.email || 'Utilisateur',
-          summary: {
-            created: result.created,
-            updated: result.updated,
-            identical: diffs.filter(d => d.action === 'skip').length,
-            total: diffs.length,
-          },
-          diffs,
-        });
-
-        await saveImportReport.mutateAsync({
-          projectId,
-          reportTitle,
-          reportContent,
-          userId: user.id,
-        });
       }
 
       setRawText("");

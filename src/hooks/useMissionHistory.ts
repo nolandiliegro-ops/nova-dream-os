@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface MissionHistoryEntry {
@@ -19,66 +18,30 @@ export interface MissionHistoryEntry {
   created_at: string;
 }
 
-export const useMissionHistory = (missionId: string) => {
+/**
+ * Returns empty array - mission_history table not available until migration is deployed
+ */
+export const useMissionHistory = (_missionId: string) => {
   return useQuery({
-    queryKey: ["mission-history", missionId],
+    queryKey: ["mission-history", _missionId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mission_history")
-        .select("*")
-        .eq("mission_id", missionId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data as MissionHistoryEntry[];
+      // Return empty array - migration not deployed yet
+      return [] as MissionHistoryEntry[];
     },
-    enabled: !!missionId,
+    enabled: !!_missionId,
   });
 };
 
 export const useRestoreMissionVersion = () => {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({
-      missionId,
-      historyEntry,
-    }: {
+    mutationFn: async (_params: {
       missionId: string;
       historyEntry: MissionHistoryEntry;
     }) => {
-      // Restaurer la mission avec les données de l'historique
-      const updateData: any = {};
-
-      if (historyEntry.previous_title) {
-        updateData.title = historyEntry.previous_title;
-      }
-      if (historyEntry.previous_description !== undefined) {
-        updateData.description = historyEntry.previous_description;
-      }
-      if (historyEntry.previous_status) {
-        updateData.status = historyEntry.previous_status;
-      }
-      if (historyEntry.previous_order_index !== undefined) {
-        updateData.order_index = historyEntry.previous_order_index;
-      }
-
-      const { error } = await supabase
-        .from("missions")
-        .update(updateData)
-        .eq("id", missionId);
-
-      if (error) throw error;
-      return missionId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["missions"] });
-      queryClient.invalidateQueries({ queryKey: ["mission-history"] });
-      toast({
-        title: "Version restaurée",
-        description: "La mission a été restaurée à cette version.",
-      });
+      // Disabled until migration is deployed
+      throw new Error("Fonctionnalité non disponible - migration SQL requise");
     },
     onError: (error: Error) => {
       toast({
@@ -95,37 +58,14 @@ export const useEditMissionFromHistory = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({
-      missionId,
-      title,
-      description,
-      status,
-    }: {
+    mutationFn: async (_params: {
       missionId: string;
       title?: string;
       description?: string;
       status?: string;
     }) => {
-      const updateData: any = {};
-      if (title !== undefined) updateData.title = title;
-      if (description !== undefined) updateData.description = description;
-      if (status !== undefined) updateData.status = status;
-
-      const { error } = await supabase
-        .from("missions")
-        .update(updateData)
-        .eq("id", missionId);
-
-      if (error) throw error;
-      return missionId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["missions"] });
-      queryClient.invalidateQueries({ queryKey: ["mission-history"] });
-      toast({
-        title: "Mission modifiée",
-        description: "Les modifications ont été enregistrées dans l'historique.",
-      });
+      // Disabled until migration is deployed
+      throw new Error("Fonctionnalité non disponible - migration SQL requise");
     },
     onError: (error: Error) => {
       toast({
