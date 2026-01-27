@@ -1,124 +1,109 @@
 
-# Plan : Ajouter le bouton Historique des Imports dans la Roadmap
+# Plan : Ajouter les colonnes de liaison aux documents
 
-## Probleme identifie
+## Objectif
 
-Le composant `ImportHistoryDialog` n'existe pas et le bouton Historique n'est pas present dans `ProjectRoadmapWidget.tsx`.
+Ajouter les colonnes `link_type`, `link_id` et `link_name` a la table `documents` pour permettre une liaison propre entre les rapports d'import et leurs projets associes.
 
-## Fichiers a creer
+## Etape 1 : Migration SQL
 
-### 1. `src/components/project-workspace/ImportHistoryDialog.tsx`
+Ajouter 3 colonnes optionnelles a la table `documents` :
 
-Nouveau composant dialog qui affiche l'historique des rapports d'import de roadmap.
+```sql
+ALTER TABLE public.documents 
+ADD COLUMN link_type text,
+ADD COLUMN link_id uuid,
+ADD COLUMN link_name text;
 
-| Element | Description |
-|---------|-------------|
-| Props | `projectId`, `open`, `onOpenChange` |
-| Query | Recupere les documents avec `category: 'report'` |
-| Contenu | Liste des rapports avec date, nom, taille |
-| Actions | Telecharger le rapport (via signed URL) |
-
-Structure du composant :
-```text
-Dialog
-  DialogHeader
-    - Titre : "Historique des Imports"
-    - Description : "Rapports generes lors des imports de roadmap"
-  
-  DialogContent
-    - ScrollArea avec liste des rapports
-    - Chaque rapport affiche :
-      - Icone FileText
-      - Nom du fichier
-      - Date de creation (formatee)
-      - Taille du fichier
-      - Bouton telecharger (Download)
-    
-    - Etat vide si aucun rapport
+COMMENT ON COLUMN public.documents.link_type IS 'Type de ressource liee (project, mission, task, etc.)';
+COMMENT ON COLUMN public.documents.link_id IS 'ID de la ressource liee';
+COMMENT ON COLUMN public.documents.link_name IS 'Nom de la ressource liee pour affichage';
 ```
 
-### 2. `src/hooks/useImportReports.ts`
+| Colonne | Type | Nullable | Description |
+|---------|------|----------|-------------|
+| link_type | text | Oui | Type de ressource (ex: 'project') |
+| link_id | uuid | Oui | ID de la ressource liee |
+| link_name | text | Oui | Nom affichable de la ressource |
 
-Nouveau hook pour recuperer les rapports d'import d'un projet specifique.
+## Etape 2 : Modifier useSaveImportReport.ts
 
-| Element | Description |
-|---------|-------------|
-| Input | `projectId` |
-| Query | Filtre documents avec `category = 'report'` et nom contenant le projectId |
-| Output | Liste des documents tries par date decroissante |
+### Modifications
 
-## Fichier a modifier
-
-### 3. `src/components/project-workspace/ProjectRoadmapWidget.tsx`
-
-Modifications exactes demandees :
-
-1. **Imports a ajouter** (ligne 5) :
-   - `History` depuis lucide-react
-   - `ImportHistoryDialog` depuis `./ImportHistoryDialog`
-
-2. **State a ajouter** (ligne 19) :
-   ```typescript
-   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
-   ```
-
-3. **Bouton Historique** (avant ligne 33, avant "Import Rapide") :
-   ```typescript
-   <Button 
-     onClick={() => setIsHistoryDialogOpen(true)}
-     size="sm"
-     variant="ghost"
-     className="gap-1.5 rounded-2xl"
-   >
-     <History className="h-4 w-4" />
-     <span className="hidden sm:inline">Historique</span>
-   </Button>
-   ```
-
-4. **Dialog a ajouter** (apres ligne 109, apres BulkImportMissionDialog) :
-   ```typescript
-   <ImportHistoryDialog
-     projectId={projectId}
-     open={isHistoryDialogOpen}
-     onOpenChange={setIsHistoryDialogOpen}
-   />
-   ```
-
-## Structure de ImportHistoryDialog
+1. Ajouter `projectName` aux parametres de la fonction
+2. Remplacer `segment: projectId` par les nouvelles colonnes :
+   - `link_type: 'project'`
+   - `link_id: projectId`
+   - `link_name: projectName`
+   - `segment: null` (pour compatibilite)
 
 ```text
-+-----------------------------------------------+
-|  Historique des Imports                    X  |
-|  Rapports generes lors des imports de roadmap |
-+-----------------------------------------------+
-|                                               |
-|  +------------------------------------------+ |
-|  | FileText  rapport-import-2026-01-27.md   | |
-|  |           27 janv. 2026 - 2.4 KB         | |
-|  |                              [Download]  | |
-|  +------------------------------------------+ |
-|                                               |
-|  +------------------------------------------+ |
-|  | FileText  rapport-import-2026-01-26.md   | |
-|  |           26 janv. 2026 - 1.8 KB         | |
-|  |                              [Download]  | |
-|  +------------------------------------------+ |
-|                                               |
-+-----------------------------------------------+
+Interface SaveImportReportParams :
+  - projectId: string
+  - projectName: string    <-- NOUVEAU
+  - reportTitle: string
+  - reportContent: string
+  - userId: string
+
+Insert documents :
+  - link_type: 'project'   <-- NOUVEAU
+  - link_id: projectId     <-- NOUVEAU
+  - link_name: projectName <-- NOUVEAU
+  - segment: null          <-- MODIFIE (etait projectId)
+```
+
+## Etape 3 : Modifier useImportReports.ts
+
+### Modifications
+
+Remplacer le filtre `.ilike("name", ...)` par des filtres exacts sur les nouvelles colonnes :
+
+```text
+Avant :
+  .eq("category", "report")
+  .ilike("name", `%${projectId}%`)
+
+Apres :
+  .eq("category", "report")
+  .eq("link_type", "project")
+  .eq("link_id", projectId)
+```
+
+## Etape 4 : Mettre a jour l'appel dans BulkImportMissionDialog
+
+Ajouter `projectName` lors de l'appel a `saveImportReport.mutate()` :
+
+```text
+Avant :
+  saveImportReport.mutate({
+    projectId,
+    reportTitle,
+    reportContent,
+    userId: user.id,
+  });
+
+Apres :
+  saveImportReport.mutate({
+    projectId,
+    projectName: project?.name || 'Projet inconnu',
+    reportTitle,
+    reportContent,
+    userId: user.id,
+  });
 ```
 
 ## Resume des fichiers
 
 | Fichier | Action |
 |---------|--------|
-| `src/hooks/useImportReports.ts` | CREER |
-| `src/components/project-workspace/ImportHistoryDialog.tsx` | CREER |
-| `src/components/project-workspace/ProjectRoadmapWidget.tsx` | MODIFIER |
+| Migration SQL | Ajouter colonnes link_type, link_id, link_name |
+| `src/hooks/useSaveImportReport.ts` | Ajouter projectName, utiliser nouvelles colonnes |
+| `src/hooks/useImportReports.ts` | Filtrer par link_type et link_id |
+| `src/components/project-workspace/BulkImportMissionDialog.tsx` | Passer projectName |
 
 ## Resultat attendu
 
-Apres implementation :
-- Bouton "Historique" visible avant "Import Rapide" dans le header Roadmap
-- Click ouvre un dialog avec la liste des rapports d'import
-- Chaque rapport peut etre telecharge
-- Ordre chronologique inverse (plus recent en premier)
+- Les rapports d'import sont correctement lies aux projets via `link_id`
+- Le filtrage est precis (plus de recherche approximative dans le nom)
+- Le nom du projet est stocke pour affichage futur
+- Compatibilite avec les anciens documents (colonnes nullables)
