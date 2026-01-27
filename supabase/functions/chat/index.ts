@@ -228,12 +228,25 @@ GESTION INTELLIGENTE DES DATES :
 - "demain" → Calcule la date de demain (aujourd'hui + 1 jour)
 - "aujourd'hui" → Utilise la date du jour
 - "dans 3 jours" → Calcule la date (aujourd'hui + 3 jours)
-- "lundi prochain" → Calcule le prochain lundi
+- "lundi", "mardi", "mercredi", etc. → Utilise le calendrier ci-dessous
 - Aucune date mentionnée → Utilise la date du jour par défaut
 - Format OBLIGATOIRE : YYYY-MM-DD
 
-DATE DU JOUR : ${new Date().toISOString().split('T')[0]}
-DATE DE DEMAIN : ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+CALENDRIER DES 7 PROCHAINS JOURS :
+${(() => {
+  const today = new Date();
+  const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const result = [`Aujourd'hui (${days[today.getDay()]}) : ${today.toISOString().split('T')[0]}`];
+  for (let i = 1; i <= 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    result.push(`${days[date.getDay()].charAt(0).toUpperCase() + days[date.getDay()].slice(1)} : ${date.toISOString().split('T')[0]}`);
+  }
+  return result.join('\n');
+})()}
+
+RÈGLE ABSOLUE : Utilise TOUJOURS les dates EXACTES du calendrier ci-dessus.
+Si l'utilisateur dit "samedi", tu DOIS utiliser la date du samedi dans le calendrier.
 
 EXEMPLES CONCRETS :
 
@@ -241,6 +254,11 @@ Utilisateur: "Crée une tâche pour appeler le client demain"
 → Réponds avec du texte ET une Action Card :
 "Parfait, je te propose cette tâche :
 [[ACTION:CREATE_TASK|title=Appeler le client|priority=high|date=${new Date(Date.now() + 86400000).toISOString().split('T')[0]}]]"
+
+Utilisateur: "Crée un RDV chez le notaire samedi"
+→ Consulte le calendrier, trouve "Samedi : 2026-02-01", puis réponds :
+"Parfait, je planifie ton RDV chez le notaire pour samedi :
+[[ACTION:CREATE_TASK|title=RDV Notaire|priority=high|date=2026-02-01]]"
 
 Utilisateur: "J'ai reçu 2000€ de mon client freelance"
 → "Super nouvelle ! Je t'ajoute ce revenu :
