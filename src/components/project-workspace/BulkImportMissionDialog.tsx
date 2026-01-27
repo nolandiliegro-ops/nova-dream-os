@@ -10,7 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, FileText, Sparkles, Target, Timer } from "lucide-react";
-import { useCreateMissionsFromTemplate } from "@/hooks/useMissions";
+import { useCreateMissionsFromTemplate, useMissions } from "@/hooks/useMissions";
+import { useBulkUpdateMissions } from "@/hooks/useBulkUpdateMissions";
+import { compareMissions, generateDiffSummary, MissionDiff } from "@/utils/missionDiff";
+import { MissionDiffPreview } from "./MissionDiffPreview";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
@@ -181,33 +184,50 @@ export function BulkImportMissionDialog({
   onOpenChange,
 }: BulkImportMissionDialogProps) {
   const [rawText, setRawText] = useState("");
+  const [showDiffPreview, setShowDiffPreview] = useState(false);
   const createMissions = useCreateMissionsFromTemplate();
+  const bulkUpdateMissions = useBulkUpdateMissions();
+  const { data: existingMissions = [] } = useMissions(projectId);
 
   const parsedMissions = useMemo(() => parseStructuredRoadmap(rawText), [rawText]);
+  
+  const diffs = useMemo(() => {
+    if (parsedMissions.length === 0) return [];
+    return compareMissions(parsedMissions, existingMissions);
+  }, [parsedMissions, existingMissions]);
+  
+  const diffSummary = useMemo(() => generateDiffSummary(diffs), [diffs]);
 
-  const handleSubmit = async () => {
+  const handleAnalyze = () => {
     if (parsedMissions.length === 0) return;
+    setShowDiffPreview(true);
+  };
+  
+  const handleSubmit = async () => {
+    if (diffs.length === 0) return;
 
     try {
-      await createMissions.mutateAsync({
+      const result = await bulkUpdateMissions.mutateAsync({
         projectId,
-        missions: parsedMissions.map(m => ({
-          title: m.title,
-          description: m.description,
-          estimatedDuration: m.estimatedDuration,
-        })),
+        diffs,
       });
 
-      const count = parsedMissions.length;
-      const withDuration = parsedMissions.filter(m => m.estimatedDuration).length;
-      const durationInfo = withDuration > 0 ? ` (${withDuration} avec durée)` : '';
-      toast.success(`${count} mission${count > 1 ? 's' : ''} créée${count > 1 ? 's' : ''}${durationInfo} !`);
+      const messages: string[] = [];
+      if (result.created > 0) {
+        messages.push(`${result.created} mission${result.created > 1 ? 's' : ''} créée${result.created > 1 ? 's' : ''}`);
+      }
+      if (result.updated > 0) {
+        messages.push(`${result.updated} mission${result.updated > 1 ? 's' : ''} mise${result.updated > 1 ? 's' : ''} à jour`);
+      }
+      
+      toast.success(messages.join(' • '));
 
-      if (count > 3) {
-        triggerBulkCelebration(count);
+      if (result.created + result.updated > 3) {
+        triggerBulkCelebration(result.created + result.updated);
       }
 
       setRawText("");
+      setShowDiffPreview(false);
       onOpenChange(false);
     } catch {
       toast.error("Erreur lors de l'import");
@@ -248,7 +268,7 @@ Chaque section numérotée = 1 mission avec sa description`}
             className="min-h-[280px] font-mono text-sm"
           />
 
-          {parsedMissions.length > 0 && (
+          {parsedMissions.length > 0 && !showDiffPreview && (
             <div className="space-y-3">
               {/* Compteur */}
               <div className="flex items-center gap-2 text-sm">
@@ -294,6 +314,22 @@ Chaque section numérotée = 1 mission avec sa description`}
               </div>
             </div>
           )}
+          
+          {showDiffPreview && diffs.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Analyse des changements</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDiffPreview(false)}
+                >
+                  Modifier
+                </Button>
+              </div>
+              <MissionDiffPreview diffs={diffs} />
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -303,23 +339,34 @@ Chaque section numérotée = 1 mission avec sa description`}
           >
             Annuler
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={parsedMissions.length === 0 || createMissions.isPending}
-            className="gap-2"
-          >
-            {createMissions.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Création...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Générer la Roadmap
-              </>
-            )}
-          </Button>
+          {!showDiffPreview ? (
+            <Button
+              onClick={handleAnalyze}
+              disabled={parsedMissions.length === 0}
+              className="gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              Analyser les changements
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              disabled={diffs.length === 0 || bulkUpdateMissions.isPending}
+              className="gap-2"
+            >
+              {bulkUpdateMissions.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Application...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Appliquer ({diffSummary.toCreate + diffSummary.toUpdate} action{diffSummary.toCreate + diffSummary.toUpdate > 1 ? 's' : ''})
+                </>
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
