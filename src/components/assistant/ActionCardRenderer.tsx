@@ -7,6 +7,7 @@ import { useCreateProject } from "@/hooks/useProjects";
 import { useCreateNote } from "@/hooks/useNotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ParsedAction {
   id: string;
@@ -57,6 +58,7 @@ export const removeActionsFromContent = (content: string): string => {
 
 export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const createTask = useCreateTask();
   const createTransaction = useCreateTransaction();
   const createProject = useCreateProject();
@@ -79,6 +81,8 @@ export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
     try {
       switch (action.type) {
         case "CREATE_TASK":
+          // Force la date du jour si aucune date n'est fournie
+          const taskDate = action.params.date || new Date().toISOString().split('T')[0];
           await createTask.mutateAsync({
             title: action.params.title || "Nouvelle tâche",
             mode: "work",
@@ -91,9 +95,12 @@ export const ActionCardRenderer = ({ content }: ActionCardRendererProps) => {
             project_id: null,
             mission_id: null,
             description: action.params.description || null,
-            due_date: action.params.date || null,
+            due_date: taskDate,
             completed_at: null,
           });
+          // Invalider immédiatement tous les caches liés aux tâches
+          await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          await queryClient.invalidateQueries({ queryKey: ["daily-tasks"] });
           toast.success(`Tâche "${action.params.title}" créée !`);
           break;
 
