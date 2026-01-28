@@ -172,6 +172,56 @@ export type Database = {
         }
         Relationships: []
       }
+      import_history: {
+        Row: {
+          changes: Json
+          created_at: string
+          created_count: number
+          id: string
+          identical_count: number
+          mode: string
+          project_id: string
+          project_name: string
+          total_count: number
+          updated_count: number
+          user_id: string
+        }
+        Insert: {
+          changes?: Json
+          created_at?: string
+          created_count?: number
+          id?: string
+          identical_count?: number
+          mode?: string
+          project_id: string
+          project_name: string
+          total_count?: number
+          updated_count?: number
+          user_id: string
+        }
+        Update: {
+          changes?: Json
+          created_at?: string
+          created_count?: number
+          id?: string
+          identical_count?: number
+          mode?: string
+          project_id?: string
+          project_name?: string
+          total_count?: number
+          updated_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
           created_at: string
