@@ -191,7 +191,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       <div className="glass-card rounded-2xl p-4 transition-all hover:bg-muted/20 group">
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex items-center gap-2 flex-wrap">
               {/* Focus Star Toggle */}
               <Button
@@ -213,11 +213,11 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               </Button>
               <button 
                 onClick={() => setWorkspaceOpen(true)}
-                className="font-trading text-base truncate hover:text-primary transition-colors cursor-pointer flex items-center gap-1 group/title"
+                className="font-trading text-base truncate hover:text-primary transition-colors cursor-pointer flex items-center gap-1 group/title min-w-0 max-w-[60%]"
                 title="Ouvrir le Mission Workspace"
               >
-                {mission.title}
-                <ExternalLink className="h-3 w-3 opacity-0 group-hover/title:opacity-100 transition-opacity" />
+                <span className="truncate">{mission.title}</span>
+                <ExternalLink className="h-3 w-3 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0" />
               </button>
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (
