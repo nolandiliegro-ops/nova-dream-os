@@ -7,7 +7,7 @@ import { useMissionsWithProgress } from "@/hooks/useMissions";
 import { MissionCard } from "./MissionCard";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { BulkImportMissionDialog } from "./BulkImportMissionDialog";
-import { ImportHistoryDialog } from "./ImportHistoryDialog";
+import { ImportHistoryDialogNew } from "./ImportHistoryDialogNew";
 
 interface ProjectRoadmapWidgetProps {
   projectId: string;
@@ -119,7 +119,7 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
         onOpenChange={setIsBulkDialogOpen}
       />
 
-      <ImportHistoryDialog
+      <ImportHistoryDialogNew
         projectId={projectId}
         open={isHistoryDialogOpen}
         onOpenChange={setIsHistoryDialogOpen}
