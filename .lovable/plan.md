@@ -1,59 +1,68 @@
 
-# Plan : Corriger le contenu coupe sur la droite des MissionCard
+# Plan Final : Corriger définitivement le rognage du texte + compatibilité mobile
 
-## Probleme identifie
+## Problème identifié (cause racine)
 
-En analysant les deux fichiers :
+La classe `.glass-card` dans `src/index.css` ligne 127 applique `overflow-hidden` à TOUTES les cartes :
+```css
+.glass-card {
+  @apply rounded-2xl border backdrop-blur-2xl relative overflow-hidden;
+  ...
+}
+```
 
-1. **MissionCard.tsx ligne 194** : Le conteneur `flex-1 min-w-0 overflow-hidden` a `overflow-hidden` qui coupe le texte a droite
-2. La description (ligne 339) n'a pas de contrainte de largeur explicite
-3. Le conteneur interne du header ne laisse pas assez d'espace pour le texte long
+Combiné avec :
+- `pr-3` insuffisant dans `ProjectRoadmapWidget.tsx` ligne 66
+- La scrollbar Radix qui se superpose au contenu
+- Manque de `w-full` sur les conteneurs internes
 
-## Corrections a appliquer
+## Corrections à appliquer
 
-### Fichier : MissionCard.tsx
+### 1. ProjectRoadmapWidget.tsx
 
-| Ligne | Avant | Apres |
+| Ligne | Avant | Après |
 |-------|-------|-------|
-| 194 | `flex-1 min-w-0 overflow-hidden` | `flex-1 min-w-0` (retirer overflow-hidden) |
-| 339 | `text-xs text-muted-foreground mt-1 break-words whitespace-normal` | `text-xs text-muted-foreground mt-1 break-words whitespace-normal w-full` |
+| 24 | `className="p-5 h-full flex flex-col"` | `className="p-5 h-full w-full flex flex-col overflow-visible"` |
+| 66 | `className="pr-3"` | `className="pr-6 w-full"` |
+| 72 | `className="relative"` | `className="relative w-full"` |
+| 77 | `className="space-y-4"` | `className="space-y-4 w-full"` |
 
-### Structure corrigee du header
+### 2. MissionCard.tsx
 
-La structure actuelle :
-```text
-+------------------------------------------+
-| [Star] [Titre...] [Duration] [Deadline]  | [Status] [Actions]
-|   (overflow-hidden coupe ici -->)        |
-+------------------------------------------+
-```
+| Ligne | Avant | Après |
+|-------|-------|-------|
+| 178 | `className="relative pl-8"` | `className="relative pl-8 w-full"` |
+| 191 | `className="glass-card rounded-2xl p-4 ..."` | `className="glass-card rounded-2xl p-4 pr-6 w-full overflow-visible ..."` |
+| 193 | `className="flex items-start justify-between gap-2 mb-3"` | `className="flex items-start justify-between gap-2 mb-3 w-full"` |
+| 194 | `className="flex-1 min-w-0"` | `className="flex-1 min-w-0 w-full"` |
+| 195 | `className="flex items-start gap-2 flex-wrap"` | `className="flex items-start gap-2 flex-wrap w-full"` |
+| 216 | Le bouton titre | Ajouter `[overflow-wrap:break-word]` pour les mots très longs |
 
-Structure apres correction :
-```text
-+------------------------------------------+
-| [Star] [Titre complet sur              | | [Status] [Actions]
-|         plusieurs lignes si besoin]    | |
-| [Duration] [Deadline]                   | |
-+------------------------------------------+
-| Description complete visible            |
-+------------------------------------------+
-```
+### 3. Compatibilité mobile
 
-## Changements detailles
+- `pr-6` = 24px de padding à droite (suffisant pour desktop)
+- Sur mobile : le padding est maintenu (`p-4 pr-6` = padding uniforme + extra à droite)
+- `w-full` sur tous les conteneurs garantit une largeur flexible
+- `break-words` + `whitespace-normal` + `[overflow-wrap:break-word]` gère les mots très longs
+- `flex-wrap` permet aux badges de passer à la ligne si nécessaire
 
-1. **Retirer overflow-hidden** (ligne 194)
-   - Permet au texte de s'afficher completement
-   - La carte s'ajustera en hauteur
+### 4. Pourquoi `overflow-visible` ?
 
-2. **Ajouter w-full a la description** (ligne 339)
-   - Garantit que la description occupe toute la largeur disponible
+La classe `overflow-visible` sur la carte MissionCard écrase le `overflow-hidden` de `.glass-card` sans modifier le style global (qui affecte d'autres composants).
 
-3. **S'assurer que le conteneur parent n'a pas de contrainte** 
-   - ProjectRoadmapWidget a deja `pr-3` sur le conteneur, ce qui est correct
+## Fichiers impactés
 
-## Resultat attendu
+| Fichier | Action |
+|---------|--------|
+| `src/components/project-workspace/ProjectRoadmapWidget.tsx` | Ajouter `w-full`, `overflow-visible`, augmenter `pr-6` |
+| `src/components/project-workspace/MissionCard.tsx` | Ajouter `w-full`, `pr-6`, `overflow-visible`, `overflow-wrap` |
 
-- Le texte "P" (Planifiee) reste visible a droite
-- Les titres longs s'affichent sur plusieurs lignes
-- Les descriptions longues sont completement visibles
-- Aucun contenu coupe sur les bords
+## Checklist de validation
+
+- [ ] Badge "Planifiée" visible en entier (pas de "P" coupé)
+- [ ] Titres longs s'affichent sur plusieurs lignes
+- [ ] Descriptions complètes visibles
+- [ ] Mots très longs (ex: "superlongmotquidépasselargemented") se coupent correctement
+- [ ] Test mobile (iPhone, Android) : pas de rognage
+- [ ] Test zoom navigateur 90%/100%/110% : rendu correct
+- [ ] Scrollbar visible : pas de superposition avec le contenu
