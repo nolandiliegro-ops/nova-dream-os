@@ -1,98 +1,51 @@
 
-# Plan : Remplacer les rapports Markdown par un historique en base de donnees
+# Plan : Afficher les titres et descriptions des missions sur plusieurs lignes
 
-## Objectif
+## Probleme identifie
 
-Migrer le systeme de rapports d'import (fichiers Markdown dans Storage) vers une table dediee `import_history` en base de donnees. Plus simple, plus rapide, plus fiable.
+Dans le composant `MissionCard.tsx`, les titres et descriptions des missions sont tronques :
+- **Ligne 216** : Le titre utilise `truncate` et `max-w-[60%]` - coupe le texte
+- **Ligne 219** : Le `<span>` interne utilise aussi `truncate`
+- **Ligne 339** : La description utilise `line-clamp-2` - limite a 2 lignes
 
-## Etape 1 : Migration SQL
+Le texte deborde et n'est pas lisible en entier.
 
-Creer la table `import_history` avec la structure suivante :
+## Corrections a appliquer
 
-```text
-Table: import_history
-+--------------------+-------------+-----------+--------------------------------+
-| Colonne            | Type        | Nullable  | Description                    |
-+--------------------+-------------+-----------+--------------------------------+
-| id                 | uuid        | Non       | Cle primaire                   |
-| user_id            | uuid        | Non       | FK vers auth.users             |
-| project_id         | uuid        | Non       | FK vers projects               |
-| project_name       | text        | Non       | Nom du projet (snapshot)       |
-| created_count      | integer     | Non       | Missions creees                |
-| updated_count      | integer     | Non       | Missions modifiees             |
-| identical_count    | integer     | Non       | Missions identiques            |
-| total_count        | integer     | Non       | Total traite                   |
-| changes            | jsonb       | Non       | Details des modifications      |
-| created_at         | timestamptz | Non       | Date de l'import               |
-| mode               | text        | Non       | Mode (work/personal)           |
-+--------------------+-------------+-----------+--------------------------------+
+### 1. Titre de la mission (ligne 214-221)
 
-Index: user_id, project_id, created_at DESC, mode
-RLS: SELECT, INSERT, DELETE pour user_id = auth.uid()
-```
+| Avant | Apres |
+|-------|-------|
+| `className="... truncate ... max-w-[60%]"` | `className="... break-words whitespace-normal text-left ..."` |
+| `<span className="truncate">` | `<span className="break-words">` |
 
-## Etape 2 : Creer le hook useSaveImportHistory.ts
+Le titre pourra s'afficher sur plusieurs lignes si necessaire.
 
-Nouveau fichier `src/hooks/useSaveImportHistory.ts` :
+### 2. Description de la mission (ligne 338-341)
 
-- Fonction `saveImportHistory(projectId, projectName, diffs)`
-- Compte automatiquement created/updated/identical
-- Prepare le JSON des modifications avec details avant/apres
-- Insere dans `import_history`
-- Affiche un toast de confirmation
+| Avant | Apres |
+|-------|-------|
+| `className="... line-clamp-2"` | `className="... break-words whitespace-normal"` |
 
-## Etape 3 : Creer ImportHistoryDialogNew.tsx
+La description complete sera visible.
 
-Nouveau fichier `src/components/project-workspace/ImportHistoryDialogNew.tsx` :
+### 3. Conteneur du header (ligne 195)
 
-- Query React Query sur `import_history` filtre par `project_id`
-- Affiche les imports par date avec statistiques
-- Liste les modifications avec icones (+ vert, edit bleu, check gris)
-- Affiche les details avant/apres pour les updates
+| Avant | Apres |
+|-------|-------|
+| `flex items-center gap-2 flex-wrap` | `flex items-start gap-2 flex-wrap` |
 
-## Etape 4 : Modifier BulkImportMissionDialog.tsx
+Aligner les elements en haut pour un meilleur rendu multi-lignes.
 
-Changements dans le fichier existant :
-
-| Ligne | Avant | Apres |
-|-------|-------|-------|
-| 19 | `import { useSaveImportReport }` | `import { useSaveImportHistory }` |
-| 20 | `import { generateImportReport, ... }` | Supprimer cette ligne |
-| 195 | `const saveImportReport = useSaveImportReport()` | `const { saveImportHistory } = useSaveImportHistory()` |
-| 236-258 | Bloc generation/sauvegarde Markdown | `await saveImportHistory(projectId, project?.name \|\| 'Projet', diffs)` |
-
-## Etape 5 : Modifier ProjectRoadmapWidget.tsx
-
-Changements dans le fichier existant :
-
-| Ligne | Avant | Apres |
-|-------|-------|-------|
-| 10 | `import { ImportHistoryDialog }` | `import { ImportHistoryDialogNew }` |
-| 122-126 | `<ImportHistoryDialog ... />` | `<ImportHistoryDialogNew ... />` |
-
-## Fichiers supprimes (optionnel, nettoyage)
-
-Ces fichiers ne seront plus utilises :
-
-- `src/hooks/useSaveImportReport.ts`
-- `src/hooks/useImportReports.ts`
-- `src/components/project-workspace/ImportHistoryDialog.tsx`
-- `src/utils/generateImportReport.ts`
-
-## Resume des fichiers
+## Fichier impacte
 
 | Fichier | Action |
 |---------|--------|
-| Migration SQL | Creer table `import_history` avec RLS |
-| `src/hooks/useSaveImportHistory.ts` | Creer (copie du fichier fourni) |
-| `src/components/project-workspace/ImportHistoryDialogNew.tsx` | Creer (copie du fichier fourni) |
-| `src/components/project-workspace/BulkImportMissionDialog.tsx` | Modifier imports et logique de sauvegarde |
-| `src/components/project-workspace/ProjectRoadmapWidget.tsx` | Modifier import du dialog |
+| `src/components/project-workspace/MissionCard.tsx` | Retirer truncate, ajouter break-words et whitespace-normal |
 
-## Avantages
+## Resultat attendu
 
-- Plus de probleme de type MIME
-- Historique consultable instantanement (pas de telechargement)
-- Donnees structurees et filtrables
-- Meilleure performance (requete DB vs lecture fichier)
-- Nettoyage automatique possible (retention)
+- Les titres longs s'affichent sur plusieurs lignes
+- Les descriptions sont visibles en entier
+- Plus de texte coupe sur la droite
+- Meilleure lisibilite des missions detaillees
