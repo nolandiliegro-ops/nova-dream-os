@@ -280,12 +280,28 @@ export function MissionFocusWidget() {
                   onClick={() => handleMissionClick(mission)}
                 >
                   {/* Project Name */}
-                  <p className="text-xs text-muted-foreground truncate mb-1">
+                  <p 
+                    className="text-xs text-muted-foreground mb-1"
+                    style={{ 
+                      overflowWrap: 'break-word', 
+                      wordBreak: 'break-word', 
+                      whiteSpace: 'normal',
+                      hyphens: 'auto'
+                    }}
+                  >
                     {mission.projectName}
                   </p>
 
                   {/* Mission Title */}
-                  <h4 className="font-trading text-sm font-bold truncate mb-2">
+                  <h4 
+                    className="font-trading text-sm font-bold mb-2"
+                    style={{ 
+                      overflowWrap: 'break-word', 
+                      wordBreak: 'break-word', 
+                      whiteSpace: 'normal',
+                      hyphens: 'auto'
+                    }}
+                  >
                     {mission.title}
                   </h4>
 

@@ -59,7 +59,17 @@ const CustomTooltip = ({ active, payload }: any) => {
           <div className="space-y-1 pt-2 border-t border-border/50">
             {data.tasks.slice(0, 5).map(task => (
               <div key={task.id} className="flex justify-between gap-2">
-                <span className="truncate text-muted-foreground">{task.title}</span>
+                <span 
+                  className="text-muted-foreground min-w-0 flex-1"
+                  style={{ 
+                    overflowWrap: 'break-word', 
+                    wordBreak: 'break-word', 
+                    whiteSpace: 'normal',
+                    hyphens: 'auto'
+                  }}
+                >
+                  {task.title}
+                </span>
                 <span className="flex-shrink-0 font-trading">{formatMinutesToDisplay(task.estimatedTime)}</span>
               </div>
             ))}

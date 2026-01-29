@@ -94,7 +94,17 @@ export function TasksWidget() {
                 <Circle className="h-4 w-4 text-muted-foreground" />
               </button>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{task.title}</p>
+                <p 
+                  className="text-sm font-medium"
+                  style={{ 
+                    overflowWrap: 'break-word', 
+                    wordBreak: 'break-word', 
+                    whiteSpace: 'normal',
+                    hyphens: 'auto'
+                  }}
+                >
+                  {task.title}
+                </p>
                 <p className="text-xs text-muted-foreground">{formatDueDate(task.due_date)}</p>
               </div>
               <button
