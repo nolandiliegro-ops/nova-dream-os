@@ -191,7 +191,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       <div className="glass-card rounded-2xl p-4 transition-all hover:bg-muted/20 group">
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2 flex-wrap">
               {/* Focus Star Toggle */}
               <Button
@@ -336,7 +336,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               )}
             </div>
             {mission.description && (
-              <p className="text-xs text-muted-foreground mt-1 break-words whitespace-normal">
+              <p className="text-xs text-muted-foreground mt-1 break-words whitespace-normal w-full">
                 {mission.description}
               </p>
             )}
