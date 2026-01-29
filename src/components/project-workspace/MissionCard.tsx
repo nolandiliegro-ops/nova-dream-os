@@ -188,11 +188,12 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       </div>
 
       {/* Card */}
-      <div className="glass-card rounded-2xl p-4 pr-6 w-full overflow-visible transition-all hover:bg-muted/20 group">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3 w-full">
-          <div className="flex-1 min-w-0 w-full">
-            <div className="flex items-start gap-2 flex-wrap w-full">
+      <div className="glass-card rounded-2xl p-4 pr-8 w-full !overflow-visible h-auto min-h-0 transition-all hover:bg-muted/20 group">
+        {/* Header - Layout vertical pour éviter le rognage */}
+        <div className="flex flex-col gap-3 mb-3 w-full">
+          {/* Ligne 1: Titre + Actions */}
+          <div className="flex items-start justify-between gap-3 w-full">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
               {/* Focus Star Toggle */}
               <Button
                 variant="ghost"
@@ -211,14 +212,50 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               >
                 <Star className={cn("h-4 w-4", mission.is_focus && "fill-current")} />
               </Button>
+              {/* Titre - Block layout pour wrap complet */}
               <button 
                 onClick={() => setWorkspaceOpen(true)}
-                className="font-trading text-base break-words whitespace-normal text-left hover:text-primary transition-colors cursor-pointer flex items-start gap-1 group/title min-w-0 [overflow-wrap:break-word]"
+                className="flex-1 min-w-0 text-left font-trading text-base whitespace-normal break-words hyphens-auto [word-break:break-word] [overflow-wrap:break-word] hover:text-primary transition-colors cursor-pointer group/title"
                 title="Ouvrir le Mission Workspace"
               >
-                <span className="break-words [overflow-wrap:break-word]">{mission.title}</span>
-                <ExternalLink className="h-3 w-3 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0 mt-1" />
+                <span className="inline">{mission.title}</span>
+                <ExternalLink className="inline-block h-3 w-3 ml-1 opacity-0 group-hover/title:opacity-100 transition-opacity align-middle" />
               </button>
+            </div>
+            {/* Actions à droite */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className={cn(
+                "px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap",
+                config.bg,
+                config.text
+              )}>
+                {config.label}
+              </span>
+              {effectiveStatus !== "completed" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-segment-ecommerce hover:bg-segment-ecommerce/20"
+                  onClick={handleComplete}
+                  disabled={completeMission.isPending}
+                  title="Marquer comme terminée"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                onClick={() => setDeleteConfirmOpen(true)}
+              >
+                <Trash2 className="h-3 w-3 text-destructive" />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Ligne 2: Badges (Duration, Timer, Deadline) */}
+          <div className="flex flex-wrap items-center gap-2 w-full pl-8">
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (
                 <div className="flex items-center gap-1">
@@ -334,42 +371,14 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
                   </PopoverContent>
                 </Popover>
               )}
-            </div>
-            {mission.description && (
-              <p className="text-xs text-muted-foreground mt-1 break-words whitespace-normal w-full">
-                {mission.description}
-              </p>
-            )}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className={cn(
-              "px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap",
-              config.bg,
-              config.text
-            )}>
-              {config.label}
-            </span>
-            {effectiveStatus !== "completed" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-segment-ecommerce hover:bg-segment-ecommerce/20"
-                onClick={handleComplete}
-                disabled={completeMission.isPending}
-                title="Marquer comme terminée"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
-              onClick={() => setDeleteConfirmOpen(true)}
-            >
-              <Trash2 className="h-3 w-3 text-destructive" />
-            </Button>
-          </div>
+          
+          {/* Description - pleine largeur avec wrap */}
+          {mission.description && (
+            <p className="text-xs text-muted-foreground break-words whitespace-normal hyphens-auto [word-break:break-word] [overflow-wrap:break-word] w-full pl-8">
+              {mission.description}
+            </p>
+          )}
         </div>
 
         {/* Progress Bar */}

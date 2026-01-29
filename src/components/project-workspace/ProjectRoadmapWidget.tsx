@@ -21,7 +21,7 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
 
   return (
-    <GlassCard className="p-5 h-full w-full flex flex-col overflow-visible">
+    <GlassCard className="p-5 h-full w-full flex flex-col !overflow-visible">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -62,8 +62,8 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
       </div>
 
       {/* Content with internal scroll */}
-      <ScrollArea className="flex-1 max-h-[500px]">
-        <div className="pr-6 w-full">
+      <ScrollArea className="flex-1 max-h-[80vh]">
+        <div className="pr-8 w-full">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
