@@ -193,12 +193,19 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       {/* Card - Force dynamic height for iOS */}
       <div 
         className="glass-card rounded-2xl p-3 pr-4 sm:p-4 sm:pr-8 w-full !overflow-visible !h-auto !min-h-0 transition-all hover:bg-muted/20 group"
-        style={{ wordWrap: 'break-word', height: 'auto', minHeight: 0, width: '100%' }}
+        style={{
+          width: "100%",
+          height: "auto",
+          minHeight: "fit-content",
+          display: "block",
+          overflow: "visible",
+          wordWrap: "break-word",
+        }}
       >
         {/* Header - Layout vertical pour éviter le rognage */}
         <div className="flex flex-col gap-3 mb-3 w-full">
           {/* Ligne 1: Titre + Actions */}
-          <div className="flex items-start justify-between gap-3 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 w-full">
             <div className="flex items-start gap-2 flex-1 min-w-0">
               {/* Focus Star Toggle */}
               <Button
@@ -235,7 +242,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               </button>
             </div>
             {/* Actions à droite */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 flex-shrink-0 w-full sm:w-auto sm:justify-end">
               <span className={cn(
                 "px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap",
                 config.bg,
@@ -243,6 +250,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               )}>
                 {config.label}
               </span>
+              <div className="flex items-center gap-2">
               {effectiveStatus !== "completed" && (
                 <Button
                   variant="ghost"
@@ -263,11 +271,12 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               >
                 <Trash2 className="h-4 w-4 sm:h-3 sm:w-3 text-destructive" />
               </Button>
+              </div>
             </div>
           </div>
           
           {/* Ligne 2: Badges (Duration, Timer, Deadline) */}
-          <div className="flex flex-wrap items-center gap-2 w-full pl-0 sm:pl-8">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 w-full pl-0 sm:pl-8">
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (
                 <div className="flex items-center gap-1">
