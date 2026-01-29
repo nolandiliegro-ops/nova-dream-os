@@ -98,10 +98,10 @@ export function DashboardLayout({ children, hideSidebar = false, headerContent }
 
   return (
     <SidebarProvider>
-      <div className={cn(
-        "flex min-h-screen w-full relative overflow-hidden overflow-x-hidden transition-all duration-700",
-        mode === "personal" && "mode-personal"
-      )}>
+        <div className={cn(
+          "flex min-h-screen min-h-[100dvh] w-full relative overflow-hidden overflow-x-hidden transition-all duration-700",
+          mode === "personal" && "mode-personal"
+        )}>
         {/* Deep Space Ambient Glows - Colors change based on mode */}
         <div className="ambient-glow ambient-glow-1" />
         <div className="ambient-glow ambient-glow-2" />

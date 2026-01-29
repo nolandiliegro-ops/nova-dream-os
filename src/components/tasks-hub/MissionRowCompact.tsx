@@ -65,13 +65,27 @@ export function MissionRowCompact({
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className={cn(
-          "font-medium text-sm truncate",
-          isCompleted && "line-through"
-        )}>
+        <p 
+          className={cn(
+            "font-medium text-sm",
+            isCompleted && "line-through"
+          )}
+          style={{ 
+            overflowWrap: 'break-word', 
+            wordBreak: 'break-all', 
+            whiteSpace: 'normal' 
+          }}
+        >
           {mission.title}
         </p>
-        <p className="text-xs text-muted-foreground truncate">
+        <p 
+          className="text-xs text-muted-foreground"
+          style={{ 
+            overflowWrap: 'break-word', 
+            wordBreak: 'break-all', 
+            whiteSpace: 'normal' 
+          }}
+        >
           {mission.projectName || "Sans projet"}
         </p>
       </div>
