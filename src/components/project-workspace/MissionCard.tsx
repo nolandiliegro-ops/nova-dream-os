@@ -192,7 +192,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-start gap-2 flex-wrap">
               {/* Focus Star Toggle */}
               <Button
                 variant="ghost"
@@ -213,11 +213,11 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               </Button>
               <button 
                 onClick={() => setWorkspaceOpen(true)}
-                className="font-trading text-base truncate hover:text-primary transition-colors cursor-pointer flex items-center gap-1 group/title min-w-0 max-w-[60%]"
+                className="font-trading text-base break-words whitespace-normal text-left hover:text-primary transition-colors cursor-pointer flex items-start gap-1 group/title min-w-0"
                 title="Ouvrir le Mission Workspace"
               >
-                <span className="truncate">{mission.title}</span>
-                <ExternalLink className="h-3 w-3 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0" />
+                <span className="break-words">{mission.title}</span>
+                <ExternalLink className="h-3 w-3 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0 mt-1" />
               </button>
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (
@@ -336,7 +336,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               )}
             </div>
             {mission.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              <p className="text-xs text-muted-foreground mt-1 break-words whitespace-normal">
                 {mission.description}
               </p>
             )}
