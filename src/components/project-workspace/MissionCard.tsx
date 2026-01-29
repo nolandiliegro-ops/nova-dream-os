@@ -176,10 +176,13 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
   };
 
   return (
-    <div className="relative pl-5 sm:pl-8 w-full">
-      {/* Stepper dot */}
+    <div 
+      className="relative pl-0 sm:pl-8 w-full"
+      style={{ width: '100%', margin: '0 0 16px 0' }}
+    >
+      {/* Stepper dot - hidden on mobile */}
       <div className={cn(
-        "absolute left-0 top-4 h-4 w-4 rounded-full border-2 transition-colors",
+        "hidden sm:block absolute left-0 top-4 h-4 w-4 rounded-full border-2 transition-colors",
         config.dot
       )}>
         {effectiveStatus === "completed" && (
@@ -190,7 +193,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       {/* Card - Force dynamic height for iOS */}
       <div 
         className="glass-card rounded-2xl p-3 pr-4 sm:p-4 sm:pr-8 w-full !overflow-visible !h-auto !min-h-0 transition-all hover:bg-muted/20 group"
-        style={{ wordWrap: 'break-word', height: 'auto', minHeight: 0 }}
+        style={{ wordWrap: 'break-word', height: 'auto', minHeight: 0, width: '100%' }}
       >
         {/* Header - Layout vertical pour éviter le rognage */}
         <div className="flex flex-col gap-3 mb-3 w-full">
@@ -264,7 +267,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
           </div>
           
           {/* Ligne 2: Badges (Duration, Timer, Deadline) */}
-          <div className="flex flex-wrap items-center gap-2 w-full pl-5 sm:pl-8">
+          <div className="flex flex-wrap items-center gap-2 w-full pl-0 sm:pl-8">
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (
                 <div className="flex items-center gap-1">
@@ -385,7 +388,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
           {/* Description - pleine largeur avec wrap */}
           {mission.description && (
             <p 
-              className="text-xs text-muted-foreground w-full pl-5 sm:pl-8"
+              className="text-xs text-muted-foreground w-full pl-0 sm:pl-8"
               style={{ 
                 overflowWrap: 'break-word', 
                 wordBreak: 'break-word', 

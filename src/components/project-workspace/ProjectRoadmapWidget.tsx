@@ -74,18 +74,18 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
 
       {/* Content - No scroll on mobile, ScrollArea on desktop */}
       <ContentWrapper>
-        <div className="px-2 sm:px-0 sm:pr-6 w-full">
+        <div className="px-0 sm:pr-6 w-full">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : missions && missions.length > 0 ? (
-            <div className="relative w-full">
-              {/* Vertical line */}
-              <div className="absolute left-[7px] top-4 bottom-4 w-0.5 bg-border" />
+            <div className="relative w-full" style={{ display: 'block' }}>
+              {/* Vertical line - hidden on mobile */}
+              <div className="hidden sm:block absolute left-[7px] top-4 bottom-4 w-0.5 bg-border" />
               
               {/* Missions */}
-              <div className="space-y-4 w-full">
+              <div className="space-y-4 w-full" style={{ display: 'block' }}>
                 {missions.map((mission, index) => (
                   <MissionCard 
                     key={mission.id} 

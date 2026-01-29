@@ -338,15 +338,15 @@ export default function ProjectWorkspace() {
 
   return (
     <DashboardLayout hideSidebar={isFocusMode} headerContent={focusModeHeader}>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6 animate-fade-in overflow-x-hidden">
         {/* Sticky Header - hidden in focus mode */}
         {!isFocusMode && (
           <div 
-            className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 -mx-3 px-3 pt-3 -mt-3 sm:-mx-4 sm:px-4 sm:pt-4 sm:-mt-4 border-b transition-colors duration-300 border-opacity-30"
+            className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 mx-0 px-3 pt-3 mt-0 sm:-mx-4 sm:px-4 sm:pt-4 sm:-mt-4 border-b transition-colors duration-300 border-opacity-30"
             style={segmentBorderStyle}
           >
-            {/* Navigation Row */}
-            <div className="flex items-center justify-between mb-3">
+            {/* Navigation Row - flex-col on mobile */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Button 
                   variant="ghost" 
@@ -362,8 +362,8 @@ export default function ProjectWorkspace() {
                 <span className="font-medium truncate max-w-[200px]">{project.name}</span>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2">
+              {/* Actions - wrap on mobile */}
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                 {/* Reset Layout */}
                 {isEditMode && (
                   <Button
