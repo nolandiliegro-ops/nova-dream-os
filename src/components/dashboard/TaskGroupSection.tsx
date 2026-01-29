@@ -48,7 +48,15 @@ export const TaskGroupSection = memo(function TaskGroupSection({ group }: TaskGr
           ) : (
             <Package className="h-3 w-3" />
           )}
-          <span className="font-medium truncate max-w-[180px]">
+          <span 
+            className="font-medium"
+            style={{ 
+              overflowWrap: 'break-word', 
+              wordBreak: 'break-word', 
+              whiteSpace: 'normal',
+              hyphens: 'auto'
+            }}
+          >
             {isIndependent ? "Tâches Indépendantes" : group.missionTitle}
           </span>
           {group.projectName && !isIndependent && (

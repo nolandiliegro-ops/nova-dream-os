@@ -203,7 +203,17 @@ export function HabitTrackerWidget() {
                   {/* Habit name with icon */}
                   <div className="flex items-center gap-1 min-w-0">
                     <IconComponent className={cn("h-3 w-3 shrink-0", `text-${colorClass}`)} />
-                    <span className="text-xs truncate">{habit.title}</span>
+                    <span 
+                      className="text-xs"
+                      style={{ 
+                        overflowWrap: 'break-word', 
+                        wordBreak: 'break-word', 
+                        whiteSpace: 'normal',
+                        hyphens: 'auto'
+                      }}
+                    >
+                      {habit.title}
+                    </span>
                     {streak >= 3 && (
                       <span className="text-[9px] bg-segment-oracle/20 text-segment-oracle px-1 rounded hidden sm:inline">
                         🔥{streak}

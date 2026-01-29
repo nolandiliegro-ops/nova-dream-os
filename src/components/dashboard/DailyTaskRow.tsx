@@ -169,9 +169,15 @@ export const DailyTaskRow = memo(function DailyTaskRow({ task }: DailyTaskRowPro
         )}
         <span
           className={cn(
-            "text-sm truncate cursor-pointer hover:text-primary transition-colors",
+            "text-sm cursor-pointer hover:text-primary transition-colors",
             isCompleted && "line-through opacity-70"
           )}
+          style={{ 
+            overflowWrap: 'break-word', 
+            wordBreak: 'break-word', 
+            whiteSpace: 'normal',
+            hyphens: 'auto'
+          }}
           onClick={() => setDetailOpen(true)}
           title="Ouvrir les détails"
         >

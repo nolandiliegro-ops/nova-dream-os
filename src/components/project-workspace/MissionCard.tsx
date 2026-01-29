@@ -188,7 +188,10 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       </div>
 
       {/* Card */}
-      <div className="glass-card rounded-2xl p-4 pr-8 w-full !overflow-visible h-auto min-h-0 transition-all hover:bg-muted/20 group">
+      <div 
+        className="glass-card rounded-2xl p-4 pr-8 w-full !overflow-visible h-auto min-h-0 transition-all hover:bg-muted/20 group"
+        style={{ wordWrap: 'break-word' }}
+      >
         {/* Header - Layout vertical pour éviter le rognage */}
         <div className="flex flex-col gap-3 mb-3 w-full">
           {/* Ligne 1: Titre + Actions */}
@@ -215,7 +218,13 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               {/* Titre - Block layout pour wrap complet */}
               <button 
                 onClick={() => setWorkspaceOpen(true)}
-                className="flex-1 min-w-0 text-left font-trading text-base whitespace-normal break-words hyphens-auto [word-break:break-word] [overflow-wrap:break-word] hover:text-primary transition-colors cursor-pointer group/title"
+                className="flex-1 min-w-0 text-left font-trading text-base hover:text-primary transition-colors cursor-pointer group/title"
+                style={{ 
+                  overflowWrap: 'break-word', 
+                  wordBreak: 'break-word', 
+                  whiteSpace: 'normal',
+                  hyphens: 'auto'
+                }}
                 title="Ouvrir le Mission Workspace"
               >
                 <span className="inline">{mission.title}</span>
@@ -375,7 +384,16 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
           
           {/* Description - pleine largeur avec wrap */}
           {mission.description && (
-            <p className="text-xs text-muted-foreground break-words whitespace-normal hyphens-auto [word-break:break-word] [overflow-wrap:break-word] w-full pl-8">
+            <p 
+              className="text-xs text-muted-foreground w-full pl-8"
+              style={{ 
+                overflowWrap: 'break-word', 
+                wordBreak: 'break-word', 
+                whiteSpace: 'normal',
+                hyphens: 'auto',
+                wordWrap: 'break-word'
+              }}
+            >
               {mission.description}
             </p>
           )}

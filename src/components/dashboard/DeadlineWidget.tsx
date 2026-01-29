@@ -86,7 +86,16 @@ export function DeadlineWidget() {
         )}
       </div>
       
-      <p className="text-sm font-medium truncate mb-3" title={nextDeadlineProject.name}>
+      <p 
+        className="text-sm font-medium mb-3 leading-snug" 
+        style={{ 
+          overflowWrap: 'break-word', 
+          wordBreak: 'break-word', 
+          whiteSpace: 'normal',
+          hyphens: 'auto'
+        }}
+        title={nextDeadlineProject.name}
+      >
         {nextDeadlineProject.name}
       </p>
 

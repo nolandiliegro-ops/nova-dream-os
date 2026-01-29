@@ -155,10 +155,18 @@ export function ProjectTasksWidget({ projectId, projectName, mode }: ProjectTask
                   <Circle className={cn("h-5 w-5", priorityColors[task.priority])} />
                 )}
               </button>
-              <span className={cn(
-                "text-sm truncate flex-1",
-                task.status === "completed" && "line-through"
-              )}>
+              <span 
+                className={cn(
+                  "text-sm flex-1",
+                  task.status === "completed" && "line-through"
+                )}
+                style={{ 
+                  overflowWrap: 'break-word', 
+                  wordBreak: 'break-word', 
+                  whiteSpace: 'normal',
+                  hyphens: 'auto'
+                }}
+              >
                 {task.title}
               </span>
               {task.status !== "completed" && (
