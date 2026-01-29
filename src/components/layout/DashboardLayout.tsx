@@ -99,7 +99,7 @@ export function DashboardLayout({ children, hideSidebar = false, headerContent }
   return (
     <SidebarProvider>
       <div className={cn(
-        "flex min-h-screen w-full relative overflow-hidden transition-all duration-700",
+        "flex min-h-screen w-full relative overflow-hidden overflow-x-hidden transition-all duration-700",
         mode === "personal" && "mode-personal"
       )}>
         {/* Deep Space Ambient Glows - Colors change based on mode */}
@@ -215,7 +215,7 @@ export function DashboardLayout({ children, hideSidebar = false, headerContent }
 
           {/* Main Content */}
           <main className={cn(
-            "flex-1 overflow-auto p-4 md:p-6",
+            "flex-1 overflow-auto px-3 py-4 md:px-6 md:py-6",
             hideSidebar && "max-w-6xl mx-auto w-full"
           )}>
             {children}

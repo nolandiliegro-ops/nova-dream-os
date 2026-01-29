@@ -139,7 +139,7 @@ export default function Dashboard() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Welcome message + Edit Mode Controls */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold md:text-3xl">

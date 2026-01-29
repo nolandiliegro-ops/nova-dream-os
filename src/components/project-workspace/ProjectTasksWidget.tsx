@@ -82,7 +82,7 @@ export function ProjectTasksWidget({ projectId, projectName, mode }: ProjectTask
   const totalCount = tasks?.length || 0;
 
   return (
-    <GlassCard className="p-5 h-full flex flex-col">
+    <GlassCard className="p-3 sm:p-5 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <ListTodo className="h-5 w-5 text-primary" />
@@ -173,12 +173,12 @@ export function ProjectTasksWidget({ projectId, projectName, mode }: ProjectTask
                 <button
                   onClick={() => startTimer(task.id, task.title)}
                   className={cn(
-                    "opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-primary/20",
+                    "opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full hover:bg-primary/20 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1 flex items-center justify-center",
                     timerState.taskId === task.id && "opacity-100 text-primary"
                   )}
                   title="Démarrer le timer"
                 >
-                  <Play className="h-4 w-4" />
+                  <Play className="h-5 w-5 sm:h-4 sm:w-4" />
                 </button>
               )}
               {task.due_date && (
