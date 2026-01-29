@@ -22,6 +22,15 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  const mobileFullBleedStyle = isMobile
+    ? ({
+        display: "block",
+        width: "100vw",
+        marginLeft: "-16px",
+        padding: "0 16px",
+      } as const)
+    : undefined;
+
   // Mobile: div standard sans scroll interne | Desktop: ScrollArea
   const ContentWrapper = isMobile 
     ? ({ children }: { children: React.ReactNode }) => (
@@ -74,7 +83,7 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
 
       {/* Content - No scroll on mobile, ScrollArea on desktop */}
       <ContentWrapper>
-        <div className="px-0 sm:pr-6 w-full">
+        <div className="px-0 sm:pr-6 w-full" style={mobileFullBleedStyle}>
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

@@ -39,6 +39,7 @@ import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { Project } from "@/hooks/useProjects";
 import { useSegments, getSegmentLabel, getSegmentColor } from "@/hooks/useSegments";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Widget configuration registry
 interface ProjectWidgetConfig {
@@ -122,6 +123,7 @@ export default function ProjectWorkspace() {
   const [searchParams] = useSearchParams();
   const { data: project, isLoading } = useProject(id);
   const { data: segments } = useSegments(project?.mode as "work" | "personal" | undefined);
+  const isMobile = useIsMobile();
   
   // Layout management hook
   const { 
@@ -338,7 +340,7 @@ export default function ProjectWorkspace() {
 
   return (
     <DashboardLayout hideSidebar={isFocusMode} headerContent={focusModeHeader}>
-      <div className="space-y-6 animate-fade-in overflow-x-hidden">
+      <div className="space-y-6 animate-fade-in overflow-x-hidden force-mobile-stack">
         {/* Sticky Header - hidden in focus mode */}
         {!isFocusMode && (
           <div 
@@ -464,10 +466,17 @@ export default function ProjectWorkspace() {
 
         {/* Dynamic Widget Grid */}
         {hasVisibleWidgets ? (
-          <div className={cn(
-            "grid gap-4",
-            isFocusMode ? "grid-cols-1" : "md:grid-cols-2"
-          )}>
+          <div
+            className={cn(
+              isMobile ? "block w-full" : "grid gap-4",
+              !isMobile && (isFocusMode ? "grid-cols-1" : "md:grid-cols-2")
+            )}
+            style={
+              isMobile
+                ? { display: "block", width: "100%", padding: "0px" }
+                : undefined
+            }
+          >
             {visibleWidgetList.map((widgetId, index) => {
               const config = PROJECT_WIDGET_REGISTRY[widgetId];
               if (!config) return null;
@@ -477,14 +486,28 @@ export default function ProjectWorkspace() {
                   key={widgetId}
                   widgetId={widgetId}
                   label={config.label}
-                  colSpanClass={isFocusMode ? "col-span-1" : getColSpanClass(config)}
+                  colSpanClass={
+                    isMobile
+                      ? "w-full"
+                      : isFocusMode
+                        ? "col-span-1"
+                        : getColSpanClass(config)
+                  }
                   isEditMode={isEditMode}
                   isFirst={index === 0}
                   isLast={index === visibleWidgetList.length - 1}
                   onMoveUp={() => moveWidget(widgetId, "up")}
                   onMoveDown={() => moveWidget(widgetId, "down")}
                 >
-                  <div id={`widget-${widgetId}`} className="h-full">
+                  <div
+                    id={`widget-${widgetId}`}
+                    className={cn("h-full", isMobile && "w-full")}
+                    style={
+                      isMobile
+                        ? { display: "block", width: "100%", padding: "0px" }
+                        : undefined
+                    }
+                  >
                     {getWidgetComponent(widgetId, project)}
                   </div>
                 </DraggableWidgetWrapper>

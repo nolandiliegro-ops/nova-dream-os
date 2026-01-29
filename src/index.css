@@ -199,6 +199,15 @@
   .glow-accent {
     box-shadow: 0 0 30px -5px hsl(var(--accent) / 0.4);
   }
+
+  /* FORCE BRUTE iOS anti-compression (scopé au ProjectWorkspace) */
+  @media (max-width: 767px) {
+    .force-mobile-stack,
+    .force-mobile-stack * {
+      min-width: 0 !important;
+      flex-shrink: 1 !important;
+    }
+  }
 }
 
 /* Deep Space Ambient Glows - WORK Mode (Default: Indigo/Purple/Blue) */
