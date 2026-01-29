@@ -20,14 +20,11 @@ import { toast } from "sonner";
 import { useApiConfig, useApiConfigs, useUpsertApiConfig, useApiStatus } from "@/hooks/useApiConfigs";
 import { useQueryClient } from "@tanstack/react-query";
 
-// Generate a random token
+// Generate a cryptographically secure random token
 function generateToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 interface AutomationsSectionProps {
