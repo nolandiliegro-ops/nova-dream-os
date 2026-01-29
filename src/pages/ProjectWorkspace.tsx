@@ -342,7 +342,7 @@ export default function ProjectWorkspace() {
         {/* Sticky Header - hidden in focus mode */}
         {!isFocusMode && (
           <div 
-            className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 -mx-4 px-4 pt-4 -mt-4 border-b transition-colors duration-300 border-opacity-30"
+            className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-4 -mx-3 px-3 pt-3 -mt-3 sm:-mx-4 sm:px-4 sm:pt-4 sm:-mt-4 border-b transition-colors duration-300 border-opacity-30"
             style={segmentBorderStyle}
           >
             {/* Navigation Row */}
@@ -427,7 +427,7 @@ export default function ProjectWorkspace() {
             </div>
 
             {/* Widget Toggle Bar */}
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-1.5 sm:gap-2 flex-wrap">
               <span className="text-sm text-muted-foreground mr-2 self-center">Afficher :</span>
               {Object.entries(PROJECT_WIDGET_REGISTRY).map(([key, config]) => {
                 const Icon = config.icon;

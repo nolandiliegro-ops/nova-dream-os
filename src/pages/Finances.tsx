@@ -275,7 +275,7 @@ export default function Finances() {
         </GlassCard>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <GlassCard className="p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Revenus ce mois</span>

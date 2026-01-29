@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   Plus, CheckSquare, Clock, AlertTriangle, Timer, TrendingUp, Loader2, 
   Trash2, X, Star, Target, CalendarIcon, MoreHorizontal
@@ -62,6 +63,7 @@ function formatTime(minutes: number): string {
 
 export default function Tasks() {
   const { mode } = useMode();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<"all" | "work" | "personal">("all");
   
   // Master-Detail state
@@ -376,7 +378,7 @@ export default function Tasks() {
         </div>
 
         {/* Stats Row */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
@@ -431,17 +433,116 @@ export default function Tasks() {
           </GlassCard>
         </div>
 
-        {/* Master-Detail Layout */}
-        <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border bg-background/50">
-          {/* MASTER: Missions List */}
-          <ResizablePanel defaultSize={40} minSize={30}>
-            <div className="h-full flex flex-col">
-              {/* Mission Header */}
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Missions ({filteredMissions.length})
-                </h3>
+        {/* Master-Detail Layout - Vertical on mobile, Horizontal on desktop */}
+        {isMobile ? (
+          // Mobile: Stacked vertical layout
+          <div className="flex flex-col gap-4">
+            {/* MASTER: Missions List */}
+            <GlassCard className="p-3">
+              <div className="flex flex-col">
+                {/* Mission Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold flex items-center gap-2 text-sm">
+                    <Target className="h-4 w-4" />
+                    Missions ({filteredMissions.length})
+                  </h3>
+                  <Dialog open={isMissionDialogOpen} onOpenChange={setIsMissionDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="gap-1 h-8">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Créer une mission</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleCreateMission} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Titre</Label>
+                          <Input
+                            value={missionForm.title}
+                            onChange={(e) => setMissionForm({ ...missionForm, title: e.target.value })}
+                            placeholder="Ex: Refonte landing page"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Projet (optionnel)</Label>
+                          <Select
+                            value={missionForm.project_id || "none"}
+                            onValueChange={(v) => setMissionForm({ ...missionForm, project_id: v === "none" ? "" : v })}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Sans projet" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sans projet</SelectItem>
+                              {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Deadline</Label>
+                          <Input
+                            type="date"
+                            value={missionForm.deadline}
+                            onChange={(e) => setMissionForm({ ...missionForm, deadline: e.target.value })}
+                          />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={createMission.isPending}>
+                          {createMission.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Créer"}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {/* Missions List - Scrollable */}
+                <ScrollArea className="max-h-[300px]">
+                  {missionsLoading ? (
+                    <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                  ) : filteredMissions.length > 0 ? (
+                    <div className="space-y-1">
+                      {filteredMissions.map((mission) => (
+                        <MissionRowCompact
+                          key={mission.id}
+                          mission={mission}
+                          isSelected={selectedMissionId === mission.id}
+                          onSelect={() => setSelectedMissionId(mission.id)}
+                          onToggleComplete={() => handleToggleMissionComplete(mission)}
+                          onToggleFocus={() => handleToggleMissionFocus(mission)}
+                          onDateChange={(date) => handleMissionDateChange(mission.id, date)}
+                          onDelete={() => { setMissionToDelete(mission.id); setDeleteMissionConfirmOpen(true); }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4 text-sm">
+                      Aucune mission. Crée-en une !
+                    </p>
+                  )}
+                </ScrollArea>
+              </div>
+            </GlassCard>
+
+            {/* DETAIL: Intel Panel */}
+            <GlassCard className="p-3 min-h-[400px]">
+              <MissionIntelPanel 
+                mission={selectedMission} 
+                onTaskClick={handleTaskClickFromPanel}
+              />
+            </GlassCard>
+          </div>
+        ) : (
+          // Desktop: Resizable horizontal layout
+          <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border bg-background/50">
+            {/* MASTER: Missions List */}
+            <ResizablePanel defaultSize={40} minSize={30}>
+              <div className="h-full flex flex-col">
+                {/* Mission Header */}
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Missions ({filteredMissions.length})
+                  </h3>
                 <Dialog open={isMissionDialogOpen} onOpenChange={setIsMissionDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-1">
@@ -672,6 +773,7 @@ export default function Tasks() {
             />
           </ResizablePanel>
         </ResizablePanelGroup>
+        )}
 
         {/* Edit Task Dialog */}
         <Dialog open={isEditTaskDialogOpen} onOpenChange={setIsEditTaskDialogOpen}>

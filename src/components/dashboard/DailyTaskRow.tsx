@@ -147,7 +147,7 @@ export const DailyTaskRow = memo(function DailyTaskRow({ task }: DailyTaskRowPro
               variant="ghost"
               size="icon"
               className={cn(
-                "h-6 w-6 flex-shrink-0 rounded-full",
+                "h-8 w-8 sm:h-6 sm:w-6 flex-shrink-0 rounded-full",
                 isRunning
                   ? "bg-primary/20 text-primary animate-pulse"
                   : "hover:bg-primary/20"

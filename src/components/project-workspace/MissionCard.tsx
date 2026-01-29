@@ -176,7 +176,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
   };
 
   return (
-    <div className="relative pl-8 w-full">
+    <div className="relative pl-5 sm:pl-8 w-full">
       {/* Stepper dot */}
       <div className={cn(
         "absolute left-0 top-4 h-4 w-4 rounded-full border-2 transition-colors",
@@ -189,7 +189,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
 
       {/* Card */}
       <div 
-        className="glass-card rounded-2xl p-4 pr-8 w-full !overflow-visible h-auto min-h-0 transition-all hover:bg-muted/20 group"
+        className="glass-card rounded-2xl p-3 pr-4 sm:p-4 sm:pr-8 w-full !overflow-visible h-auto min-h-0 transition-all hover:bg-muted/20 group"
         style={{ wordWrap: 'break-word' }}
       >
         {/* Header - Layout vertical pour éviter le rognage */}
@@ -202,8 +202,8 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "h-6 w-6 rounded-full transition-all flex-shrink-0",
-                  mission.is_focus 
+                  "h-8 w-8 sm:h-6 sm:w-6 rounded-full transition-all flex-shrink-0",
+                  mission.is_focus
                     ? "text-segment-oracle hover:text-segment-oracle/80"
                     : "text-muted-foreground hover:text-segment-oracle opacity-0 group-hover:opacity-100"
                 )}
@@ -244,7 +244,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-segment-ecommerce hover:bg-segment-ecommerce/20"
+                  className="h-8 w-8 sm:h-6 sm:w-6 text-segment-ecommerce hover:bg-segment-ecommerce/20"
                   onClick={handleComplete}
                   disabled={completeMission.isPending}
                   title="Marquer comme terminée"
@@ -255,16 +255,16 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                className="h-8 w-8 sm:h-6 sm:w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
                 onClick={() => setDeleteConfirmOpen(true)}
               >
-                <Trash2 className="h-3 w-3 text-destructive" />
+                <Trash2 className="h-4 w-4 sm:h-3 sm:w-3 text-destructive" />
               </Button>
             </div>
           </div>
           
           {/* Ligne 2: Badges (Duration, Timer, Deadline) */}
-          <div className="flex flex-wrap items-center gap-2 w-full pl-8">
+          <div className="flex flex-wrap items-center gap-2 w-full pl-5 sm:pl-8">
               {/* Duration badge with Play button */}
               {mission.estimated_duration && (
                 <div className="flex items-center gap-1">
@@ -277,8 +277,8 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
                       variant="ghost"
                       size="icon"
                       className={cn(
-                        "h-6 w-6 rounded-full transition-all",
-                        isTimerRunning 
+                        "h-8 w-8 sm:h-6 sm:w-6 rounded-full transition-all",
+                        isTimerRunning
                           ? "bg-primary/20 text-primary animate-pulse"
                           : "hover:bg-primary/20 text-primary"
                       )}
@@ -300,8 +300,8 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-6 w-6 rounded-full transition-all",
-                    isTimerRunning 
+                    "h-8 w-8 sm:h-6 sm:w-6 rounded-full transition-all",
+                    isTimerRunning
                       ? "bg-primary/20 text-primary animate-pulse"
                       : "hover:bg-primary/20 text-primary opacity-0 group-hover:opacity-100"
                   )}
@@ -385,7 +385,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
           {/* Description - pleine largeur avec wrap */}
           {mission.description && (
             <p 
-              className="text-xs text-muted-foreground w-full pl-8"
+              className="text-xs text-muted-foreground w-full pl-5 sm:pl-8"
               style={{ 
                 overflowWrap: 'break-word', 
                 wordBreak: 'break-word', 

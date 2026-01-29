@@ -79,7 +79,7 @@ export function ProjectFinancesWidget({ projectId, segment, budget }: ProjectFin
     .slice(-6) || [];
 
   return (
-    <GlassCard className="p-5 h-full flex flex-col">
+    <GlassCard className="p-3 sm:p-5 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <DollarSign className="h-5 w-5 text-primary" />
@@ -123,7 +123,7 @@ export function ProjectFinancesWidget({ projectId, segment, budget }: ProjectFin
           )}
 
           {/* Stats Grid - Segment level */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-segment-ecommerce/10">
               <div className="flex items-center gap-1 text-segment-ecommerce mb-1">
                 <TrendingUp className="h-4 w-4" />
