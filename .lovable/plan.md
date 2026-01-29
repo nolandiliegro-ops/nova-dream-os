@@ -1,51 +1,59 @@
 
-# Plan : Afficher les titres et descriptions des missions sur plusieurs lignes
+# Plan : Corriger le contenu coupe sur la droite des MissionCard
 
 ## Probleme identifie
 
-Dans le composant `MissionCard.tsx`, les titres et descriptions des missions sont tronques :
-- **Ligne 216** : Le titre utilise `truncate` et `max-w-[60%]` - coupe le texte
-- **Ligne 219** : Le `<span>` interne utilise aussi `truncate`
-- **Ligne 339** : La description utilise `line-clamp-2` - limite a 2 lignes
+En analysant les deux fichiers :
 
-Le texte deborde et n'est pas lisible en entier.
+1. **MissionCard.tsx ligne 194** : Le conteneur `flex-1 min-w-0 overflow-hidden` a `overflow-hidden` qui coupe le texte a droite
+2. La description (ligne 339) n'a pas de contrainte de largeur explicite
+3. Le conteneur interne du header ne laisse pas assez d'espace pour le texte long
 
 ## Corrections a appliquer
 
-### 1. Titre de la mission (ligne 214-221)
+### Fichier : MissionCard.tsx
 
-| Avant | Apres |
-|-------|-------|
-| `className="... truncate ... max-w-[60%]"` | `className="... break-words whitespace-normal text-left ..."` |
-| `<span className="truncate">` | `<span className="break-words">` |
+| Ligne | Avant | Apres |
+|-------|-------|-------|
+| 194 | `flex-1 min-w-0 overflow-hidden` | `flex-1 min-w-0` (retirer overflow-hidden) |
+| 339 | `text-xs text-muted-foreground mt-1 break-words whitespace-normal` | `text-xs text-muted-foreground mt-1 break-words whitespace-normal w-full` |
 
-Le titre pourra s'afficher sur plusieurs lignes si necessaire.
+### Structure corrigee du header
 
-### 2. Description de la mission (ligne 338-341)
+La structure actuelle :
+```text
++------------------------------------------+
+| [Star] [Titre...] [Duration] [Deadline]  | [Status] [Actions]
+|   (overflow-hidden coupe ici -->)        |
++------------------------------------------+
+```
 
-| Avant | Apres |
-|-------|-------|
-| `className="... line-clamp-2"` | `className="... break-words whitespace-normal"` |
+Structure apres correction :
+```text
++------------------------------------------+
+| [Star] [Titre complet sur              | | [Status] [Actions]
+|         plusieurs lignes si besoin]    | |
+| [Duration] [Deadline]                   | |
++------------------------------------------+
+| Description complete visible            |
++------------------------------------------+
+```
 
-La description complete sera visible.
+## Changements detailles
 
-### 3. Conteneur du header (ligne 195)
+1. **Retirer overflow-hidden** (ligne 194)
+   - Permet au texte de s'afficher completement
+   - La carte s'ajustera en hauteur
 
-| Avant | Apres |
-|-------|-------|
-| `flex items-center gap-2 flex-wrap` | `flex items-start gap-2 flex-wrap` |
+2. **Ajouter w-full a la description** (ligne 339)
+   - Garantit que la description occupe toute la largeur disponible
 
-Aligner les elements en haut pour un meilleur rendu multi-lignes.
-
-## Fichier impacte
-
-| Fichier | Action |
-|---------|--------|
-| `src/components/project-workspace/MissionCard.tsx` | Retirer truncate, ajouter break-words et whitespace-normal |
+3. **S'assurer que le conteneur parent n'a pas de contrainte** 
+   - ProjectRoadmapWidget a deja `pr-3` sur le conteneur, ce qui est correct
 
 ## Resultat attendu
 
+- Le texte "P" (Planifiee) reste visible a droite
 - Les titres longs s'affichent sur plusieurs lignes
-- Les descriptions sont visibles en entier
-- Plus de texte coupe sur la droite
-- Meilleure lisibilite des missions detaillees
+- Les descriptions longues sont completement visibles
+- Aucun contenu coupe sur les bords
