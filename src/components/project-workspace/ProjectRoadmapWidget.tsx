@@ -8,6 +8,7 @@ import { MissionCard } from "./MissionCard";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { BulkImportMissionDialog } from "./BulkImportMissionDialog";
 import { ImportHistoryDialogNew } from "./ImportHistoryDialogNew";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProjectRoadmapWidgetProps {
   projectId: string;
@@ -19,6 +20,16 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
+
+  // Mobile: div standard sans scroll interne | Desktop: ScrollArea
+  const ContentWrapper = isMobile 
+    ? ({ children }: { children: React.ReactNode }) => (
+        <div className="w-full h-auto overflow-y-visible">{children}</div>
+      )
+    : ({ children }: { children: React.ReactNode }) => (
+        <ScrollArea className="flex-1 max-h-[80vh]">{children}</ScrollArea>
+      );
 
   return (
     <GlassCard className="p-3 sm:p-5 h-full w-full flex flex-col !overflow-visible">
@@ -61,9 +72,9 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
         </div>
       </div>
 
-      {/* Content with internal scroll */}
-      <ScrollArea className="flex-1 max-h-[80vh]">
-        <div className="pr-2 sm:pr-6 w-full">
+      {/* Content - No scroll on mobile, ScrollArea on desktop */}
+      <ContentWrapper>
+        <div className="px-2 sm:px-0 sm:pr-6 w-full">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -104,7 +115,7 @@ export function ProjectRoadmapWidget({ projectId, mode }: ProjectRoadmapWidgetPr
             </div>
           )}
         </div>
-      </ScrollArea>
+      </ContentWrapper>
 
       <AddMissionDialog
         projectId={projectId}

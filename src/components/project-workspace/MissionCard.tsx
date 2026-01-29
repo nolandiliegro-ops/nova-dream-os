@@ -187,10 +187,10 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
         )}
       </div>
 
-      {/* Card */}
+      {/* Card - Force dynamic height for iOS */}
       <div 
-        className="glass-card rounded-2xl p-3 pr-4 sm:p-4 sm:pr-8 w-full !overflow-visible h-auto min-h-0 transition-all hover:bg-muted/20 group"
-        style={{ wordWrap: 'break-word' }}
+        className="glass-card rounded-2xl p-3 pr-4 sm:p-4 sm:pr-8 w-full !overflow-visible !h-auto !min-h-0 transition-all hover:bg-muted/20 group"
+        style={{ wordWrap: 'break-word', height: 'auto', minHeight: 0 }}
       >
         {/* Header - Layout vertical pour éviter le rognage */}
         <div className="flex flex-col gap-3 mb-3 w-full">
@@ -215,13 +215,13 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               >
                 <Star className={cn("h-4 w-4", mission.is_focus && "fill-current")} />
               </Button>
-              {/* Titre - Block layout pour wrap complet */}
+              {/* Titre - FORCE break-all for iOS Safari */}
               <button 
                 onClick={() => setWorkspaceOpen(true)}
                 className="flex-1 min-w-0 text-left font-trading text-base hover:text-primary transition-colors cursor-pointer group/title"
                 style={{ 
                   overflowWrap: 'break-word', 
-                  wordBreak: 'break-word', 
+                  wordBreak: 'break-all', 
                   whiteSpace: 'normal',
                   hyphens: 'auto'
                 }}

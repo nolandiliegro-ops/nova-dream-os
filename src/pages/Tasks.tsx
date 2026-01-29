@@ -495,8 +495,8 @@ export default function Tasks() {
                   </Dialog>
                 </div>
 
-                {/* Missions List - Scrollable */}
-                <ScrollArea className="max-h-[300px]">
+                {/* Missions List - NO ScrollArea on mobile */}
+                <div className="w-full h-auto overflow-y-visible">
                   {missionsLoading ? (
                     <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
                   ) : filteredMissions.length > 0 ? (
@@ -519,7 +519,7 @@ export default function Tasks() {
                       Aucune mission. Crée-en une !
                     </p>
                   )}
-                </ScrollArea>
+                </div>
               </div>
             </GlassCard>
 
