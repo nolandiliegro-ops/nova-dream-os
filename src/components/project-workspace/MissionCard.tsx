@@ -176,7 +176,7 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
   };
 
   return (
-    <div className="relative pl-8">
+    <div className="relative pl-8 w-full">
       {/* Stepper dot */}
       <div className={cn(
         "absolute left-0 top-4 h-4 w-4 rounded-full border-2 transition-colors",
@@ -188,11 +188,11 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
       </div>
 
       {/* Card */}
-      <div className="glass-card rounded-2xl p-4 transition-all hover:bg-muted/20 group">
+      <div className="glass-card rounded-2xl p-4 pr-6 w-full overflow-visible transition-all hover:bg-muted/20 group">
         {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-2 flex-wrap">
+        <div className="flex items-start justify-between gap-2 mb-3 w-full">
+          <div className="flex-1 min-w-0 w-full">
+            <div className="flex items-start gap-2 flex-wrap w-full">
               {/* Focus Star Toggle */}
               <Button
                 variant="ghost"
@@ -213,10 +213,10 @@ export function MissionCard({ mission, isFirst, isLast }: MissionCardProps) {
               </Button>
               <button 
                 onClick={() => setWorkspaceOpen(true)}
-                className="font-trading text-base break-words whitespace-normal text-left hover:text-primary transition-colors cursor-pointer flex items-start gap-1 group/title min-w-0"
+                className="font-trading text-base break-words whitespace-normal text-left hover:text-primary transition-colors cursor-pointer flex items-start gap-1 group/title min-w-0 [overflow-wrap:break-word]"
                 title="Ouvrir le Mission Workspace"
               >
-                <span className="break-words">{mission.title}</span>
+                <span className="break-words [overflow-wrap:break-word]">{mission.title}</span>
                 <ExternalLink className="h-3 w-3 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0 mt-1" />
               </button>
               {/* Duration badge with Play button */}
