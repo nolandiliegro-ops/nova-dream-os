@@ -67,7 +67,8 @@ export const ActionCard = ({
   isExecuting = false,
   isExecuted = false,
 }: ActionCardProps) => {
-  const config = actionConfigs[type];
+  // Safe access with fallback to prevent "Cannot read properties of undefined"
+  const config = actionConfigs[type] || actionConfigs.CREATE_TASK;
   const Icon = config.icon;
 
   const getParamsDisplay = () => {
